@@ -3,6 +3,7 @@
 import numpy as np
 import pylab as pl
 from glob import glob
+from astropy.io import fits
 
 def calc_xi(n_total,r,flux):
 	return flux/(n_total*r**2)
@@ -27,7 +28,7 @@ def t_eq(n_e, n_xi, n_xip1 , alpha_rec, alpha_recm1):
 class pion_rates:
 	"""Big stupid class for holding data. To be tidied up nicely later, when I can be bothered."""
 
-	def __init__(self, source='/home/mlparker/computing/ufo_timing/pion_rates'):
+	def __init__(self, source='pion_rates'):
 		print '\nReading ionization/recombination rates from '+source
 		file_names=glob(source+'/*.asc')
 		xis=[float('.'.join(x.split('.')[-3:-1]).split('_')[-1]) for x in file_names]
@@ -42,11 +43,13 @@ class pion_rates:
 		self.elements=list(set(self.data_stack[0,:,0]))
 
 	def filter_element(self,element):
+		print '\tFiltering rates table for',element
 		elements=self.data_stack[0,:,0]
 		filtered_data=self.data_stack[:,elements==element,:]
 		return filtered_data
 
 	def filter_ion(self,element,ion):
+		print '\tFiltering rates table for',element,ion
 		elements=self.data_stack[0,:,0]
 		filtered_data=self.data_stack[:,elements==element,:]
 		ions=filtered_data[0,:,1]
@@ -59,7 +62,7 @@ class pion_rates:
 class pion_concentrations:
 	"""Big stupid class for holding data. To be tidied up nicely later, when I can be bothered."""
 
-	def __init__(self, source='/home/mlparker/computing/ufo_timing/pion_concs'):
+	def __init__(self, source='pion_concs'):
 		print '\nReading equilibrium concentrations from '+source
 		file_names=glob(source+'/*.asc')
 		xis=[float('.'.join(x.split('.')[-3:-1]).split('_')[-1]) for x in file_names]
@@ -74,7 +77,8 @@ class pion_concentrations:
 			for row in open(file_name,'r'):
 				if i>3:
 					# print row.strip()
-					element= row[0:2].strip()
+					element= row[0:3].strip()
+					# print element
 					ion=row[3:10].strip()
 					iontype=row[11:20].strip()
 					remaining=row[21:].strip().split()
@@ -82,31 +86,70 @@ class pion_concentrations:
 					# print element,ion,iontype,charge,fraction, absolute
 					temp_array.append([element,ion,iontype,charge,fraction, absolute])
 				i+=1
+			# exit()
 			temp_array=np.array(temp_array)
-			print temp_array.shape
 			self.data_stack.append(temp_array)
 
 
 		### 1000 xi values, 207 ions, 6 columns (element, ion, ionization rate, recomb rate, junk, junk)
 		self.data_stack=np.array(self.data_stack)
-		print self.data_stack.shape
-		exit()
-		self.elements=list(set(self.data_stack[0,:,0]))
+		self.calc_elements()
+		# print self.data_stack.shape
+		# exit()
+	def calc_elements(self):
+		self.elements=[]
+		for sub_array in self.data_stack:
+			self.elements=self.elements+list(set(sub_array[:,0]))
+			# print temp_elements
+			# exit()
+		self.elements=list(set(self.elements))
+		# print self.elements
+		# exit()
+		# self.elements=list(set(self.data_stack[0,:,0]))
 
 	def filter_element(self,element):
-		elements=self.data_stack[0,:,0]
-		filtered_data=self.data_stack[:,elements==element,:]
-		return filtered_data
+		print '\tFiltering concentrations table for',element
+		filtered_data=[]
+		for sub_array in self.data_stack:
+			filtered_sub_array=sub_array[sub_array[:,0]==element]
+			filtered_data.append(filtered_sub_array)
+		# filtered_data=self.data_stack[:,elements==element,:]
+		return np.array(filtered_data)
 
 	def filter_ion(self,element,ion):
-		elements=self.data_stack[0,:,0]
-		filtered_data=self.data_stack[:,elements==element,:]
-		ions=filtered_data[0,:,1]
-		filtered_data=filtered_data[:,ions==ion,:]
-		return filtered_data
+		print '\tFiltering concentrations table for',element,ion
+		filtered_data=[]
+		for sub_array in self.data_stack:
+			filtered_sub_array=sub_array[sub_array[:,0]==element]
+			filtered_sub_array=filtered_sub_array[filtered_sub_array[:,1]==ion]
+			if len(filtered_sub_array)==1:
+				filtered_data.append(filtered_sub_array[0][-1])
+			else:
+				filtered_data.append(0)
 
 
+		# elements=self.data_stack[0,:,0]
+		# filtered_data=self.data_stack[:,elements==element,:]
+		# ions=filtered_data[0,:,1]
+		# filtered_data=filtered_data[:,ions==ion,:]
+		return np.array(filtered_data)
 
+
+class lightcurve:
+	"""Lightcurve class. Self explanatory. Assumes standard fits file format."""
+	def __init__(self, filename):
+		self.filename=filename
+		rate_table=fits.open(filename)['RATE'].data
+		self.countrate=rate_table['RATE']
+		self.error=rate_table['ERROR']
+		self.time=rate_table['TIME']
+
+	def rebin(factor):
+		"""Function to resample the lightcurve. Probably necessary."""
+		pass
+
+
+		
 
 
 
@@ -134,17 +177,42 @@ if __name__ == '__main__':
 	fexxv_rates=rates.filter_ion('Fe','XXV')
 	fexxvi_rates=rates.filter_ion('Fe','XXVI')
 
+	# print concentrations.elements
 	fexxv_concs=concentrations.filter_ion('Fe','XXV')
+	fexxvi_concs=concentrations.filter_ion('Fe','XXVI')
+	sixiv_concs=concentrations.filter_ion('Si','XIV')
+	sxvi_concs=concentrations.filter_ion('S','XVI')
+	arxviii_concs=concentrations.filter_ion('Ar','XVIII')
+	caxx_concs=concentrations.filter_ion('Ca','XX')
+	fexxvi_concs=concentrations.filter_ion('Fe','XXVI')
+	# print fexxv_concs.shape
+	# exit()
 
+
+	concentrations_fig=pl.figure('Equilibrium concentrations')
 	ax=pl.subplot(111)
-	ax.set_yscale('log')
+	pl.plot(xi_vals,fexxv_concs, label='Fe XXV')
+	pl.plot(xi_vals, fexxvi_concs, label='Fe XXVI')
+	pl.plot(xi_vals, sixiv_concs, label='Si XIV')
+	pl.plot(xi_vals, sxvi_concs, label='S XVI')
+	pl.plot(xi_vals, arxviii_concs, label='Ar XVIII')
+	pl.plot(xi_vals, caxx_concs, label='Ca XX')
+	pl.legend()
+	pl.savefig('concentrations_test.pdf',bbox_inches='tight')
 
-	pl.plot(xi_vals,fexxv_concs[:,0,-1])
+
+
+	test_lightcurve=lightcurve('src_10s.lc')
+	test_lightcurve.rebin(10)
+	
+	lightcurve_fig=pl.figure('Lightcurve')
+	ax=pl.subplot(111)
+	pl.plot(test_lightcurve.time,test_lightcurve.countrate)
+	pl.savefig('lightcurve_test.pdf',bbox_inches='tight')
 
 	# pl.plot(xi_vals,fexxv_rates[:,0,2],label='Fe XXV Ionization')
 	# pl.plot(xi_vals,fexxv_rates[:,0,3],label='Fe XXV Recombination')
 	# pl.plot(xi_vals,fexxvi_rates[:,0,2],label='Fe XXVI Ionization')
 	# pl.plot(xi_vals,fexxvi_rates[:,0,3],label='Fe XXVI Recombination')
 
-	pl.legend()
-	pl.show()
+	# pl.show()
