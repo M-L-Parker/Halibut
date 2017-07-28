@@ -4,9 +4,15 @@ import numpy as np
 import pylab as pl
 from glob import glob
 from astropy.io import fits
+import roman
+from scipy.interpolate import UnivariateSpline as spline
+
 
 def calc_xi(n_total,r,flux):
 	return flux/(n_total*r**2)
+
+def calc_xi_from_countrate(countrate,meanrate,meanxi):
+	return meanxi*countrate/meanrate
 
 def net_rate(n_e,n_xi,n_xip1,n_xim1,alpha_rec, alpha_recm1, I_rat, I_ratm1):
 	# Time dependence of ionization balance (dn_Xi/dt)
@@ -56,7 +62,12 @@ class pion_rates:
 		filtered_data=filtered_data[:,ions==ion,:]
 		return filtered_data
 
-
+	def get_ions(self,element):
+		print '\tCalculating ions of',element
+		elements=self.data_stack[0,:,0]
+		filtered_data=self.data_stack[:,elements==element,:]
+		ions=sorted([roman.fromRoman(x) for x in list(set(filtered_data[0,:,1]))])
+		return np.array(ions)
 
 
 class pion_concentrations:
@@ -71,7 +82,8 @@ class pion_concentrations:
 		self.data_stack=[]
 		for file_name in self.file_names:
 			###HAVE TO MANUALLY READ THESE FILES. ANNOYING.
-			# self.data_stack.append(np.loadtxt(file_name,dtype='str',skiprows=4))
+			###The array format is different for concentrations than rates - 
+			###only includes ions that are present, whereas rates includes all
 			i=0
 			temp_array=[]
 			for row in open(file_name,'r'):
@@ -83,29 +95,19 @@ class pion_concentrations:
 					iontype=row[11:20].strip()
 					remaining=row[21:].strip().split()
 					charge, fraction, absolute = remaining[0],remaining[1],remaining[2]
-					# print element,ion,iontype,charge,fraction, absolute
 					temp_array.append([element,ion,iontype,charge,fraction, absolute])
 				i+=1
-			# exit()
 			temp_array=np.array(temp_array)
 			self.data_stack.append(temp_array)
 
-
-		### 1000 xi values, 207 ions, 6 columns (element, ion, ionization rate, recomb rate, junk, junk)
 		self.data_stack=np.array(self.data_stack)
 		self.calc_elements()
-		# print self.data_stack.shape
-		# exit()
+
 	def calc_elements(self):
 		self.elements=[]
 		for sub_array in self.data_stack:
 			self.elements=self.elements+list(set(sub_array[:,0]))
-			# print temp_elements
-			# exit()
 		self.elements=list(set(self.elements))
-		# print self.elements
-		# exit()
-		# self.elements=list(set(self.data_stack[0,:,0]))
 
 	def filter_element(self,element):
 		print '\tFiltering concentrations table for',element
@@ -127,12 +129,29 @@ class pion_concentrations:
 			else:
 				filtered_data.append(0)
 
+		return np.array(filtered_data,dtype=float)
 
-		# elements=self.data_stack[0,:,0]
-		# filtered_data=self.data_stack[:,elements==element,:]
-		# ions=filtered_data[0,:,1]
-		# filtered_data=filtered_data[:,ions==ion,:]
-		return np.array(filtered_data)
+	def get_concentrations(self, element, ions, xi):
+		if not hasattr(ions,'__iter__'):
+			ions=[ions]
+		concentrations=[]
+		for ion in ions:
+			print '\nGetting equilibrium concentration of',element,roman.toRoman(ion)
+			filtered_array=self.filter_ion(element,roman.toRoman(ion))
+			# print filtered_array
+			if sum(filtered_array)==0:
+				concentrations.append(0.)
+			else:
+				ion_spline=spline(self.xis,filtered_array,s=0)
+				estimate=float(ion_spline(np.log10(xi)))
+				if estimate>1.e-20:
+					concentrations.append(estimate)
+				else:
+					concentrations.append(0.)
+
+		return concentrations
+
+
 
 
 class lightcurve:
@@ -144,6 +163,8 @@ class lightcurve:
 		self.countrate=rate_table['RATE']
 		self.error=rate_table['ERROR']
 		self.time=rate_table['TIME']
+		self.mean=np.mean(self.countrate)
+		self.filtered=False
 
 	def rebin(self,factor):
 		"""Function to resample the lightcurve. Probably necessary."""
@@ -158,6 +179,7 @@ class lightcurve:
 		if remainder !=0:
 			new_countrate.append(np.sum(self.countrate[factor*(i+1):factor*(i+1)])/float(remainder))
 		self.countrate=np.array(new_countrate)
+		self.mean=np.mean(self.countrate)
 		pass
 
 	def filter_null(self):
@@ -165,13 +187,27 @@ class lightcurve:
 		print '\tRemoving zeros from lightcurve. Caution! Only run this AFTER rebinning, not before.'
 		self.time=self.time[self.countrate>0]
 		self.countrate=self.countrate[self.countrate>0]
+		self.filtered=True
 		pass
 
+	def spline(self):
+		"""Fit a splint to lightcurve"""
+		if not self.filtered:
+			print 'WARNING: Lightcurve should be filtered for zeros (lighcurve.filter_null()) before fitting spline'
+		lc_spline=spline(self.time,self.countrate,s=0)
+		return lc_spline
 
-		
-
-
-
+	def cut_interval(self,tmin,tmax):
+		# find indices of intervals to keep
+		print '\tCutting times between',5.856e8+130000,'and',5.856e8+140000
+		indices=[]
+		for i,t in enumerate(self.time):
+			if t<tmin or t>tmax:
+				indices.append(i)
+		self.time=self.time[indices]
+		self.countrate=self.countrate[indices]
+		self.error=self.error[indices]
+		self.mean=np.mean(self.countrate)
 
 
 
@@ -210,25 +246,31 @@ if __name__ == '__main__':
 
 	concentrations_fig=pl.figure('Equilibrium concentrations')
 	ax=pl.subplot(111)
-	pl.plot(xi_vals,fexxv_concs, label='Fe XXV')
-	pl.plot(xi_vals, fexxvi_concs, label='Fe XXVI')
-	pl.plot(xi_vals, sixiv_concs, label='Si XIV')
-	pl.plot(xi_vals, sxvi_concs, label='S XVI')
-	pl.plot(xi_vals, arxviii_concs, label='Ar XVIII')
-	pl.plot(xi_vals, caxx_concs, label='Ca XX')
+	pl.plot(xi_vals,fexxv_concs, label='Fe XXV', color='r')
+	pl.plot(xi_vals, fexxvi_concs, label='Fe XXVI', color='dodgerblue')
+	pl.plot(xi_vals, sixiv_concs, label='Si XIV', color='forestgreen')
+	pl.plot(xi_vals, sxvi_concs, label='S XVI', color='goldenrod')
+	pl.plot(xi_vals, arxviii_concs, label='Ar XVIII', color='orchid')
+	pl.plot(xi_vals, caxx_concs, label='Ca XX', color='navy')
 	pl.legend()
 	pl.savefig('concentrations_test.pdf',bbox_inches='tight')
 
 
 
-	test_lightcurve=lightcurve('src_10s.lc')
+	test_lightcurve=lightcurve('example_lightcurve.lc')
 
-	lightcurve_fig=pl.figure('Lightcurve')
+	lightcurve_fig=pl.figure('Lightcurve',figsize=(10,5))
 	ax=pl.subplot(111)
+	ax.set_xlim(min(test_lightcurve.time),max(test_lightcurve.time))
 	pl.plot(test_lightcurve.time,test_lightcurve.countrate,color='k',label='Raw lightcurve')
+	test_lightcurve.cut_interval(5.856e8+128000,5.856e8+140000)
 	test_lightcurve.rebin(10)
 	test_lightcurve.filter_null()
 	pl.plot(test_lightcurve.time,test_lightcurve.countrate,color='r',label='Filtered, resampled')
+	spline_test=test_lightcurve.spline()
+	dummy_times=np.linspace(min(test_lightcurve.time),max(test_lightcurve.time),100000)
+	pl.plot(dummy_times,spline_test(dummy_times),color='dodgerblue',label='Spline')
+	# pl.plot()
 	pl.legend()
 	pl.savefig('lightcurve_test.pdf',bbox_inches='tight')
 	
