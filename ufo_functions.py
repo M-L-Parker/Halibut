@@ -138,14 +138,33 @@ class pion_concentrations:
 class lightcurve:
 	"""Lightcurve class. Self explanatory. Assumes standard fits file format."""
 	def __init__(self, filename):
+		print '\nInitializing lightcurve:',filename
 		self.filename=filename
 		rate_table=fits.open(filename)['RATE'].data
 		self.countrate=rate_table['RATE']
 		self.error=rate_table['ERROR']
 		self.time=rate_table['TIME']
 
-	def rebin(factor):
+	def rebin(self,factor):
 		"""Function to resample the lightcurve. Probably necessary."""
+		### This is very crude and could use re-writing.
+		print '\tResampling lightcurve ('+self.filename+') by a factor of',factor
+		self.time=self.time[::factor]
+		n_timesteps=len(self.countrate)
+		remainder=n_timesteps%factor
+		new_countrate=[]
+		for i in range(0,n_timesteps/int(factor)):
+			new_countrate.append(np.sum(self.countrate[factor*i:factor*i+factor])/float(factor))
+		if remainder !=0:
+			new_countrate.append(np.sum(self.countrate[factor*(i+1):factor*(i+1)])/float(remainder))
+		self.countrate=np.array(new_countrate)
+		pass
+
+	def filter_null(self):
+		"""Remove all zeros from lightcurve"""
+		print '\tRemoving zeros from lightcurve. Caution! Only run this AFTER rebinning, not before.'
+		self.time=self.time[self.countrate>0]
+		self.countrate=self.countrate[self.countrate>0]
 		pass
 
 
@@ -203,12 +222,17 @@ if __name__ == '__main__':
 
 
 	test_lightcurve=lightcurve('src_10s.lc')
-	test_lightcurve.rebin(10)
-	
+
 	lightcurve_fig=pl.figure('Lightcurve')
 	ax=pl.subplot(111)
-	pl.plot(test_lightcurve.time,test_lightcurve.countrate)
+	pl.plot(test_lightcurve.time,test_lightcurve.countrate,color='k',label='Raw lightcurve')
+	test_lightcurve.rebin(10)
+	test_lightcurve.filter_null()
+	pl.plot(test_lightcurve.time,test_lightcurve.countrate,color='r',label='Filtered, resampled')
+	pl.legend()
 	pl.savefig('lightcurve_test.pdf',bbox_inches='tight')
+	
+	# pl.show()
 
 	# pl.plot(xi_vals,fexxv_rates[:,0,2],label='Fe XXV Ionization')
 	# pl.plot(xi_vals,fexxv_rates[:,0,3],label='Fe XXV Recombination')
