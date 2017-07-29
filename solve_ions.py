@@ -3,6 +3,7 @@
 import numpy as np
 import pylab as pl
 from ufo_functions import *
+import roman
 
 elements=['Fe']
 
@@ -15,7 +16,10 @@ test_lightcurve.filter_null()
 # Mean ionization - 10^3 seems reasonable...
 mean_countrate=test_lightcurve.mean
 mean_xi=1000.
-densities=[1.e10]
+densities=[1.e8]
+
+### Silva et al. 2016 says constant e density, but what should it be??
+### Should be HII dominated, so ne ~ nH
 
 initial_countrate=test_lightcurve.countrate[0]
 initial_xi=calc_xi_from_countrate(initial_countrate,mean_countrate,mean_xi)
@@ -36,24 +40,86 @@ for density in densities:
 		
 		# Get intial ion concentrations
 		initial_concs=concentrations.get_concentrations(element, ions, initial_xi)
-		current_concs=initial_concs
-		temp_concs=np.zeros(current_concs.shape
+		current_concs=initial_concs*density
+		temp_concs=np.zeros(current_concs.shape)
 
-		for time, countrate in zip(test_lightcurve.time, test_lightcurve.countrate):
+		time_dependent_concentrations=[]
+		delta_ion=0
 
-			#### Some sort of convergence needed here?
-			for index,ion in enumerate(ions):
-				print 'Ion',ion
-				if ion==min(ions):
-					# if no ions in current state or state above, set no ions for next step
-					if current_concs[index]==0. and current_concs[index+1]==0.:
-						temp_concs[index]=0.
+		for t_step, countrate in zip(range(0,len(test_lightcurve.time)), test_lightcurve.countrate):
+			time=test_lightcurve.time[t_step]
+			temp_concs=np.zeros(current_concs.shape)
+			if t_step != len(test_lightcurve.time)-1:
+				delta_t=test_lightcurve.time[t_step+1]-time
+				print float(time-min(test_lightcurve.time))/float(max(test_lightcurve.time)-min(test_lightcurve.time))
 
-				if ion==max(ions):
-					# if no ions in current state or state below, set no ions for next step
-					if current_concs[index]==0. and current_concs[index-1]==0.:
-						temp_concs[index]=0
-				else:
-					# if no ions in state and adjacent states, set no ions for next step
-					if current_concs[index]==0. and current_concs[index-1]==0. and current_concs[index+1]==0:
-						temp_concs[index]=0
+				current_xi=calc_xi_from_countrate(countrate, mean_countrate, mean_xi)
+				#### Some sort of convergence needed here?
+				for index,ion in enumerate(ions):
+					# print 'Ion',element, roman.toRoman(ion)
+					# print ion, min(ions)
+					# if ion==25:
+					if ion==min(ions):
+						# if no ions in current state or state above, set no ions for next step
+						if current_concs[index]==0. and current_concs[index+1]==0.:
+							temp_concs[index]=0.
+						else:
+							# find ionization rate of ion, recombination rate of ion above
+							i_rate,r_rate=rates.get_ion_rates(element,ion,current_xi)
+							i_rate_p1,r_rate_p1=rates.get_ion_rates(element,ion+1,current_xi)
+
+							delta_ion = net_rate(density,current_concs[index],current_concs[index+1],0,r_rate_p1, 0, i_rate, 0)
+							temp_concs[index]=current_concs[index]+delta_ion*delta_t
+							# print current_concs[index], delta_ion*delta_t
+							# print i_rate, r_rate
+							# exit()
+
+
+					if ion==max(ions):
+						# if no ions in current state or state below, set no ions for next step
+						if current_concs[index]==0. and current_concs[index-1]==0.:
+							temp_concs[index]=0
+						else:
+							i_rate,r_rate=rates.get_ion_rates(element,ion,current_xi)
+							i_rate_m1,r_rate_m1=rates.get_ion_rates(element,ion-1,current_xi)
+
+							delta_ion = net_rate(density,current_concs[index],0,current_concs[index-1],0, r_rate, 0, i_rate_m1)
+							temp_concs[index]=current_concs[index]+delta_ion*delta_t
+							# print current_concs[index], delta_ion*delta_t
+					else:
+						# if no ions in state and adjacent states, set no ions for next step
+						if current_concs[index]==0. and current_concs[index-1]==0. and current_concs[index+1]==0:
+							temp_concs[index]=0
+						else:
+							i_rate,r_rate=rates.get_ion_rates(element,ion,current_xi)
+							i_rate_m1,r_rate_m1=rates.get_ion_rates(element,ion-1,current_xi)
+							i_rate_p1,r_rate_p1=rates.get_ion_rates(element,ion+1,current_xi)
+
+							delta_ion = net_rate(density,current_concs[index],current_concs[index+1],current_concs[index-1],r_rate_m1, r_rate, i_rate, i_rate_m1)
+							temp_concs[index]=current_concs[index]+delta_ion*delta_t
+							# print current_concs[index], delta_ion*delta_t
+				
+				# exit()
+				current_concs=temp_concs
+
+				time_dependent_concentrations.append(temp_concs)
+		time_dependent_concentrations=np.array(time_dependent_concentrations)
+		# print time_dependent_concentrations.shape
+		# print time_dependent_concentrations.shape
+		ax1=pl.subplot(211)
+		pl.plot(test_lightcurve.time,test_lightcurve.countrate)
+
+		ax2=pl.subplot(212)
+		ax2.set_yscale('log')
+		# pl.plot(test_lightcurve.time[:-1], time_dependent_concentrations[:,26])
+		print time_dependent_concentrations[:,25-1]
+		pl.plot(test_lightcurve.time[:-1], time_dependent_concentrations[:,25-1])
+		pl.plot(test_lightcurve.time[:-1], time_dependent_concentrations[:,26-1])
+		pl.show()
+
+
+			# exit()
+
+
+
+

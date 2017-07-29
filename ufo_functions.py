@@ -17,10 +17,6 @@ def calc_xi_from_countrate(countrate,meanrate,meanxi):
 def net_rate(n_e,n_xi,n_xip1,n_xim1,alpha_rec, alpha_recm1, I_rat, I_ratm1):
 	# Time dependence of ionization balance (dn_Xi/dt)
 	# electron density, relative densities of ions (i, i+1, i-1), recombination coefficients, ionization rates
-
-	# Where to get these from? Cloudy? Xstar? <- some sort of utility exists for taking rates etc from xstar, might be useful
-	# SPEX has a rec_time tool. Ask CP about it.w
-
 	recomb    = - n_xi * n_e * alpha_recm1 # recombination of Xi -> Xi-1
 	recomb_p1 = n_xip1 * n_e * alpha_rec   # recombination of Xi+1 -> Xi
 	ioniz     = - n_xi * I_rat             # ionization of Xi -> Xi+1
@@ -47,15 +43,17 @@ class pion_rates:
 		### 1000 xi values, 207 ions, 6 columns (element, ion, ionization rate, recomb rate, junk, junk)
 		self.data_stack=np.array(self.data_stack)
 		self.elements=list(set(self.data_stack[0,:,0]))
+		self.ions=list(set(self.data_stack[0,:,1]))
+		# self.define_spline_array()
 
 	def filter_element(self,element):
-		print '\tFiltering rates table for',element
+		# print '\tFiltering rates table for',element
 		elements=self.data_stack[0,:,0]
 		filtered_data=self.data_stack[:,elements==element,:]
 		return filtered_data
 
 	def filter_ion(self,element,ion):
-		print '\tFiltering rates table for',element,ion
+		# print '\tFiltering rates table for',element,ion
 		elements=self.data_stack[0,:,0]
 		filtered_data=self.data_stack[:,elements==element,:]
 		ions=filtered_data[0,:,1]
@@ -68,6 +66,39 @@ class pion_rates:
 		filtered_data=self.data_stack[:,elements==element,:]
 		ions=sorted([roman.fromRoman(x) for x in list(set(filtered_data[0,:,1]))])
 		return np.array(ions)
+
+	def get_splines(self, element, ion):
+		filtered_sub_array = self.filter_ion(element,ion)
+		# print filtered_sub_array.shape
+		ionization_spline = spline(self.xis,filtered_sub_array[:,2])
+		recomb_spline = spline(self.xis,filtered_sub_array[:,3])
+		return ionization_spline,recomb_spline
+
+	def get_ion_rates(self,element,ion,xi):
+		i_spline, r_spline=self.get_splines(element,ion)
+		return i_spline(np.log10(xi)), r_spline(np.log10(xi))
+
+	# def ion_exists(self,element,ion):
+	# 	elements=self.data_stack[0,:,0]
+	# 	filtered_data=self.data_stack[:,elements==element,:]
+	# 	ions=filtered_data[0,:,1]
+	# 	filtered_data=filtered_data[:,ions==ion,:]
+	# 	if filtered_data.shape[0]>0:
+	# 		return True
+	# 	else:
+	# 		return False
+
+	# def define_spline_array(self):
+	# 	'''Define an array of spline functions describing the ionization and recombination rates for each ion'''
+	# 	self.spline_array=np.zeros((len(self.elements),len(self.ions),2))
+	# 	for i,element in enumerate(self.elements):
+	# 		for j,ion in enumerate(sorted([roman.fromRoman(x) for x in self.ions])):
+	# 			if self.ion_exists(element,ion):
+	# 				i_rate,r_rate=self.get_splines(element,ion)
+	# 				self.spline_array[i,j,0]=i_rate
+	# 				self.spline_array[i,j,1]=r_rate
+	# 	pass
+
 
 
 class pion_concentrations:
@@ -149,7 +180,7 @@ class pion_concentrations:
 				else:
 					concentrations.append(0.)
 
-		return concentrations
+		return np.array(concentrations)
 
 
 
