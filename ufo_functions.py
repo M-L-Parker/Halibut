@@ -12,15 +12,21 @@ def calc_xi(n_total,r,flux):
 	return flux/(n_total*r**2)
 
 def calc_xi_from_countrate(countrate,meanrate,meanxi):
+	# print countrate, meanrate, meanxi
 	return meanxi*countrate/meanrate
 
 def net_rate(n_e,n_xi,n_xip1,n_xim1,alpha_rec, alpha_recm1, I_rat, I_ratm1):
 	# Time dependence of ionization balance (dn_Xi/dt)
 	# electron density, relative densities of ions (i, i+1, i-1), recombination coefficients, ionization rates
-	recomb    = - n_xi * n_e * alpha_recm1 # recombination of Xi -> Xi-1
-	recomb_p1 = n_xip1 * n_e * alpha_rec   # recombination of Xi+1 -> Xi
+	recomb    = - n_xi * alpha_recm1 # recombination of Xi -> Xi-1
+	recomb_p1 = n_xip1 * alpha_rec   # recombination of Xi+1 -> Xi
 	ioniz     = - n_xi * I_rat             # ionization of Xi -> Xi+1
 	ioniz_m1  = n_xim1 * I_ratm1           # ionization of Xi-1 -> Xi
+	# print 'recombination rate:',recomb
+	# print 'recombination rate of above ion:', recomb_p1
+	# print 'ionization rate:', ioniz
+	# print 'ionization rate of below ion:', ioniz_m1
+	# exit()
 	return recomb + recomb_p1 + ioniz + ioniz_m1
 
 def t_eq(n_e, n_xi, n_xip1 , alpha_rec, alpha_recm1):
@@ -68,14 +74,23 @@ class pion_rates:
 		return np.array(ions)
 
 	def get_splines(self, element, ion):
-		filtered_sub_array = self.filter_ion(element,ion)
+		# print element, ion
+		filtered_sub_array = self.filter_ion(element,roman.toRoman(ion))
 		# print filtered_sub_array.shape
-		ionization_spline = spline(self.xis,filtered_sub_array[:,2])
-		recomb_spline = spline(self.xis,filtered_sub_array[:,3])
+		# print filtered_sub_array
+		# ax=pl.subplot(111)
+		# ax.set_yscale('log')
+		# pl.plot(self.xis,filtered_sub_array[:,0,2])
+		ionization_spline = spline(self.xis,filtered_sub_array[:,0,2])
+		recomb_spline = spline(self.xis,filtered_sub_array[:,0,3])
+		# pl.plot(self.xis,filtered_sub_array[:,0,3])
+		# pl.show()
 		return ionization_spline,recomb_spline
 
 	def get_ion_rates(self,element,ion,xi):
 		i_spline, r_spline=self.get_splines(element,ion)
+		# print i_spline(np.log10(xi)), r_spline(np.log10(xi))
+		# exit()
 		return i_spline(np.log10(xi)), r_spline(np.log10(xi))
 
 	# def ion_exists(self,element,ion):
@@ -262,6 +277,23 @@ if __name__ == '__main__':
 	xi_vals=rates.xis
 	fexxv_rates=rates.filter_ion('Fe','XXV')
 	fexxvi_rates=rates.filter_ion('Fe','XXVI')
+	sxvi_rates=rates.filter_ion('S','XVI')
+	sixiv_rates=rates.filter_ion('Si','XIV')
+	rates_fig=pl.figure('Ionization rates')
+	ax=pl.subplot(111)
+	ax.set_yscale('log')
+	pl.plot(xi_vals,fexxvi_rates[:,0,2],color='dodgerblue',label='Fe XXVI')
+	pl.plot(xi_vals,fexxvi_rates[:,0,3],color='dodgerblue',ls='--')
+	pl.plot(xi_vals,fexxv_rates[:,0,2],color='red', label='Fe XXV')
+	pl.plot(xi_vals,fexxv_rates[:,0,3],color='red',ls='--')
+	pl.plot(xi_vals,sxvi_rates[:,0,2],color='goldenrod', label='S XVI')
+	pl.plot(xi_vals,sxvi_rates[:,0,3],color='goldenrod',ls='--')
+	pl.plot(xi_vals,sixiv_rates[:,0,2],color='forestgreen', label='Si XIV')
+	pl.plot(xi_vals,sixiv_rates[:,0,3],color='forestgreen',ls='--')
+	pl.legend()
+	pl.savefig('rates_test.pdf',bbox_inches='tight')
+
+
 
 	# print concentrations.elements
 	fexxv_concs=concentrations.filter_ion('Fe','XXV')
