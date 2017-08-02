@@ -21,7 +21,7 @@ element='Fe'
 ### Silva et al. 2016 says constant e density, but what should it be??
 ### Should be HII dominated, so ne ~ nH
 
-densities=[1.e-9]#,1.e-9,1.e-8,1.e-7]
+densities=[1.e-10,1.e-9,1.e-8,1.e-7,1.e-6,1.e-5]
 
 for density in densities:
 
@@ -76,7 +76,7 @@ for density in densities:
 
 			net_rates, temp_i_rates, temp_r_rates = rates.get_net_rates(element, np.log10(current_xi), ions, current_concs)
 
-			current_concs=current_concs+net_rates
+			current_concs=current_concs+net_rates*delta_t
 
 			# print 'ionization:',current_xi
 			#### Some sort of convergence needed here?
