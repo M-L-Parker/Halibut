@@ -16,7 +16,7 @@ test_lightcurve.filter_null()
 # Mean ionization - 10^3 seems reasonable...
 mean_countrate=test_lightcurve.mean
 mean_xi=1000.
-densities=[1.e15]
+densities=[1.e-10] #Units of 10^20 m^-3
 
 ### Silva et al. 2016 says constant e density, but what should it be??
 ### Should be HII dominated, so ne ~ nH
@@ -75,10 +75,10 @@ for density in densities:
 								r_rate=0
 							else:
 								# find ionization rate of ion, recombination rate of ion above
-								ion_rates=rates.get_ion_rates(element,ion,current_xi)
+								ion_rates=rates.get_ion_rates(element,ion,np.log10(current_xi))
 								i_rate=ion_rates[0]*current_concs[index]
 								r_rate=ion_rates[1]*current_concs[index]
-								ion_rates_p1=rates.get_ion_rates(element,ion+1,current_xi)
+								ion_rates_p1=rates.get_ion_rates(element,ion+1,np.log10(current_xi))
 								i_rate_p1=ion_rates_p1[0]*current_concs[index+1]
 								r_rate_p1=ion_rates_p1[1]*current_concs[index+1]
 
@@ -96,10 +96,10 @@ for density in densities:
 								i_rate=0
 								r_rate=0
 							else:
-								ion_rates=rates.get_ion_rates(element,ion,current_xi)
+								ion_rates=rates.get_ion_rates(element,ion,np.log10(current_xi))
 								i_rate=ion_rates[0]*current_concs[index]
 								r_rate=ion_rates[1]*current_concs[index]
-								ion_rates_m1=rates.get_ion_rates(element,ion-1,current_xi)
+								ion_rates_m1=rates.get_ion_rates(element,ion-1,np.log10(current_xi))
 								i_rate_m1=ion_rates_m1[0]*current_concs[index-1]
 								r_rate_m1=ion_rates_m1[1]*current_concs[index-1]
 
@@ -114,13 +114,13 @@ for density in densities:
 								i_rate=0
 								r_rate=0
 							else:
-								ion_rates=rates.get_ion_rates(element,ion,current_xi)
+								ion_rates=rates.get_ion_rates(element,ion,np.log10(current_xi))
 								i_rate=ion_rates[0]*current_concs[index]
 								r_rate=ion_rates[1]*current_concs[index]
-								ion_rates_m1=rates.get_ion_rates(element,ion-1,current_xi)
+								ion_rates_m1=rates.get_ion_rates(element,ion-1,np.log10(current_xi))
 								i_rate_m1=ion_rates_m1[0]*current_concs[index-1]
 								r_rate_m1=ion_rates_m1[1]*current_concs[index-1]
-								ion_rates_p1=rates.get_ion_rates(element,ion+1,current_xi)
+								ion_rates_p1=rates.get_ion_rates(element,ion+1,np.log10(current_xi))
 								i_rate_p1=ion_rates_p1[0]*current_concs[index+1]
 								r_rate_p1=ion_rates_p1[1]*current_concs[index+1]
 

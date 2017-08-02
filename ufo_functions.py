@@ -15,31 +15,32 @@ def calc_xi_from_countrate(countrate,meanrate,meanxi):
 	# print countrate, meanrate, meanxi
 	return meanxi*countrate/meanrate
 
-def net_rate(n_e,n_xi,n_xip1,n_xim1,alpha_rec, alpha_recm1, I_rat, I_ratm1):
-	# Time dependence of ionization balance (dn_Xi/dt)
-	# electron density, relative densities of ions (i, i+1, i-1), recombination coefficients, ionization rates
-	recomb    = - n_xi * alpha_recm1 # recombination of Xi -> Xi-1
-	recomb_p1 = n_xip1 * alpha_rec   # recombination of Xi+1 -> Xi
-	ioniz     = - n_xi * I_rat             # ionization of Xi -> Xi+1
-	ioniz_m1  = n_xim1 * I_ratm1           # ionization of Xi-1 -> Xi
-	# print 'recombination rate:',recomb
-	# print 'recombination rate of above ion:', recomb_p1
-	# print 'ionization rate:', ioniz
-	# print 'ionization rate of below ion:', ioniz_m1
-	# exit()
-	return recomb + recomb_p1 + ioniz + ioniz_m1
+
+# def net_rate(n_e,n_xi,n_xip1,n_xim1,alpha_rec, alpha_recm1, I_rat, I_ratm1):
+# 	# Time dependence of ionization balance (dn_Xi/dt)
+# 	# electron density, relative densities of ions (i, i+1, i-1), recombination coefficients, ionization rates
+# 	recomb    = - n_xi * alpha_recm1 # recombination of Xi -> Xi-1
+# 	recomb_p1 = n_xip1 * alpha_rec   # recombination of Xi+1 -> Xi
+# 	ioniz     = - n_xi * I_rat             # ionization of Xi -> Xi+1
+# 	ioniz_m1  = n_xim1 * I_ratm1           # ionization of Xi-1 -> Xi
+# 	# print 'recombination rate:',recomb
+# 	# print 'recombination rate of above ion:', recomb_p1
+# 	# print 'ionization rate:', ioniz
+# 	# print 'ionization rate of below ion:', ioniz_m1
+# 	# exit()
+# 	return recomb + recomb_p1 + ioniz + ioniz_m1
 
 def t_eq(n_e, n_xi, n_xip1 , alpha_rec, alpha_recm1):
 	return (alpha_rec * n_e)**-1 * ((alpha_recm1/alpha_rec)+(n_xip1/n_xi))**-1
 
-
 class pion_rates:
 	"""Big stupid class for holding data. To be tidied up nicely later, when I can be bothered."""
 
-	def __init__(self, source='pion_rates'):
+	def __init__(self, source='pion_rates', density=1.e-10):
 		print '\nReading ionization/recombination rates from '+source
-		file_names=glob(source+'/*.asc')
+		file_names=glob(source+'/*%s*.asc' % str(density))
 		xis=[float('.'.join(x.split('.')[-3:-1]).split('_')[-1]) for x in file_names]
+
 		self.file_names = [y for x,y in sorted(zip(xis,file_names))]
 		self.xis=sorted(xis)
 		self.data_stack=[]
@@ -76,52 +77,40 @@ class pion_rates:
 	def get_splines(self, element, ion):
 		# print element, ion
 		filtered_sub_array = self.filter_ion(element,roman.toRoman(ion))
-		# print filtered_sub_array.shape
-		# print filtered_sub_array
-		# ax=pl.subplot(111)
-		# ax.set_yscale('log')
-		# pl.plot(self.xis,filtered_sub_array[:,0,2])
-		ionization_spline = spline(self.xis,filtered_sub_array[:,0,2])
-		recomb_spline = spline(self.xis,filtered_sub_array[:,0,3])
-		# pl.plot(self.xis,filtered_sub_array[:,0,3])
-		# pl.show()
+		ionization_spline = spline(self.xis,filtered_sub_array[:,0,2],s=0)
+		recomb_spline = spline(self.xis,filtered_sub_array[:,0,3],s=0)
 		return ionization_spline,recomb_spline
 
 	def get_ion_rates(self,element,ion,xi):
 		i_spline, r_spline=self.get_splines(element,ion)
-		# print i_spline(np.log10(xi)), r_spline(np.log10(xi))
-		# exit()
-		return i_spline(np.log10(xi)), r_spline(np.log10(xi))
+		return i_spline(xi), r_spline(xi)
 
-	# def ion_exists(self,element,ion):
-	# 	elements=self.data_stack[0,:,0]
-	# 	filtered_data=self.data_stack[:,elements==element,:]
-	# 	ions=filtered_data[0,:,1]
-	# 	filtered_data=filtered_data[:,ions==ion,:]
-	# 	if filtered_data.shape[0]>0:
-	# 		return True
-	# 	else:
-	# 		return False
-
-	# def define_spline_array(self):
-	# 	'''Define an array of spline functions describing the ionization and recombination rates for each ion'''
-	# 	self.spline_array=np.zeros((len(self.elements),len(self.ions),2))
-	# 	for i,element in enumerate(self.elements):
-	# 		for j,ion in enumerate(sorted([roman.fromRoman(x) for x in self.ions])):
-	# 			if self.ion_exists(element,ion):
-	# 				i_rate,r_rate=self.get_splines(element,ion)
-	# 				self.spline_array[i,j,0]=i_rate
-	# 				self.spline_array[i,j,1]=r_rate
-	# 	pass
-
-
+	def get_net_rates(self,element,xi,ions,concentrations):
+		r_rates=[]
+		i_rates=[]
+		net_rates=[]
+		for ion,concentration in zip(ions,np.nan_to_num(concentrations)):
+			temp_rates=self.get_ion_rates(element,ion,xi)
+			# print temp_rates[1], concentration
+			r_rates.append(temp_rates[1]*max(concentration,0.))
+			i_rates.append(temp_rates[0]*max(concentration,0.))
+		for i,ion in enumerate(ions):
+			if i==0:
+				net_rate=r_rates[i+1]-r_rates[i]-i_rates[i]
+			elif ion==ions[-1]:
+				net_rate=i_rates[i-1]-r_rates[i]-i_rates[i]
+			else:
+				net_rate=i_rates[i-1]+r_rates[i+1]-r_rates[i]-i_rates[i]
+			net_rates.append(net_rate)
+			# print net_rate, concentration
+		return np.array(net_rates), np.array(i_rates), np.array(r_rates)
 
 class pion_concentrations:
 	"""Big stupid class for holding data. To be tidied up nicely later, when I can be bothered."""
 
-	def __init__(self, source='pion_concs'):
+	def __init__(self, source='pion_concs', density=1.e-10):
 		print '\nReading equilibrium concentrations from '+source
-		file_names=glob(source+'/*.asc')
+		file_names=glob(source+'/*%s*.asc' % str(density))
 		xis=[float('.'.join(x.split('.')[-3:-1]).split('_')[-1]) for x in file_names]
 		self.file_names = [y for x,y in sorted(zip(xis,file_names))]
 		self.xis=sorted(xis)
