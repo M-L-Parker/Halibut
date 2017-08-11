@@ -13,6 +13,13 @@ test_lightcurve.cut_interval(5.856e8+128000,5.856e8+140000)
 test_lightcurve.rebin(10)
 test_lightcurve.filter_null()
 
+# Define time resolution, resample lightcurve
+resample_factor=10
+lc_spline=test_lightcurve.spline()
+# print len(test_lightcurve.time)
+# exit()
+manual_times=np.linspace(min(test_lightcurve.time),max(test_lightcurve.time),resample_factor*len(test_lightcurve.time))
+
 # Mean ionization - 10^3 seems reasonable...
 mean_countrate=test_lightcurve.mean
 mean_xi=5000.
@@ -21,7 +28,7 @@ element='Fe'
 ### Silva et al. 2016 says constant e density, but what should it be??
 ### Should be HII dominated, so ne ~ nH
 
-densities=[1.e-10,1.e-9,1.e-8,1.e-7,1.e-6,1.e-5]
+densities=[1.e-6]
 
 for density in densities:
 
@@ -63,13 +70,13 @@ for density in densities:
 	xi_values=[]
 
 	# for ion in ions:
-	for t_step, countrate in zip(range(0,len(test_lightcurve.time)), test_lightcurve.countrate):
-		time=test_lightcurve.time[t_step]
+	for t_step, countrate in zip(range(0,len(manual_times)), lc_spline(manual_times)):
+		time=manual_times[t_step]
 		# temp_concs=np.copy(current_concs)
 
-		if t_step != len(test_lightcurve.time)-1:
-			delta_t=test_lightcurve.time[t_step+1]-time
-			# print float(time-min(test_lightcurve.time))/float(max(test_lightcurve.time)-min(test_lightcurve.time))
+		if t_step != len(manual_times)-1:
+			delta_t=manual_times[t_step+1]-time
+			# print float(time-min(manual_times))/float(max(manual_times)-min(manual_times))
 
 			current_xi=calc_xi_from_countrate(countrate, mean_countrate, mean_xi)
 			xi_values.append(current_xi)
@@ -126,22 +133,22 @@ for density in densities:
 
 	ax1=pl.subplot(411)
 	ax1.set_ylabel(r'$\xi$')
-	pl.plot(test_lightcurve.time[:-1],xi_values)
+	pl.plot(manual_times[:-1],xi_values)
 
 
 
 	ax2=pl.subplot(412)
 	ax2.set_ylabel(r'$\mathrm{Rate\ (s^{-1})}$')
-	pl.plot(test_lightcurve.time[:-1],i_rates,label='Ionization')
-	pl.plot(test_lightcurve.time[:-1],r_rates,label='Recombination')
-	pl.plot(test_lightcurve.time[:-1],[x+y for x,y in zip(i_rates, r_rates)],label='Net loss')
+	pl.plot(manual_times[:-1],i_rates,label='Ionization')
+	pl.plot(manual_times[:-1],r_rates,label='Recombination')
+	pl.plot(manual_times[:-1],[x+y for x,y in zip(i_rates, r_rates)],label='Net loss')
 	pl.legend()
 
 	ax3=pl.subplot(413)
 	ax3.set_ylabel(r'$\mathrm{Rate\ (s^{-1})}$')
-	pl.plot(test_lightcurve.time[:-1],i_rates_m1,label='Fe XXIV Ionization')
-	pl.plot(test_lightcurve.time[:-1],r_rates_p1,label='Fe XXVI Recombination')
-	pl.plot(test_lightcurve.time[:-1],[x+y for x,y in zip(i_rates_m1, r_rates_p1)],label='Net gain')
+	pl.plot(manual_times[:-1],i_rates_m1,label='Fe XXIV Ionization')
+	pl.plot(manual_times[:-1],r_rates_p1,label='Fe XXVI Recombination')
+	pl.plot(manual_times[:-1],[x+y for x,y in zip(i_rates_m1, r_rates_p1)],label='Net gain')
 	pl.legend()
 
 
@@ -149,13 +156,13 @@ for density in densities:
 	ax4=pl.subplot(414)
 	# ax4.set_ylim(0,1)
 	# ax2.set_yscale('log')
-	# pl.plot(test_lightcurve.time[:-1], time_dependent_concentrations[:,26])
+	# pl.plot(manual_times[:-1], time_dependent_concentrations[:,26])
 	# print time_dependent_concentrations[:,25-1]
-	# pl.plot(test_lightcurve.time[:-1], time_dependent_concentrations[:,24-1])
-	pl.plot(test_lightcurve.time[:-1], time_dependent_concentrations[:,24-1]/np.sum(time_dependent_concentrations[-1,:]),label='Fe XXIV')
-	pl.plot(test_lightcurve.time[:-1], time_dependent_concentrations[:,25-1]/np.sum(time_dependent_concentrations[-1,:]),label='Fe XXV')
-	pl.plot(test_lightcurve.time[:-1], time_dependent_concentrations[:,26-1]/np.sum(time_dependent_concentrations[-1,:]),label='Fe XXVI')
-	# pl.plot(test_lightcurve.time[:-1], time_dependent_concentrations[:,26-1])
+	# pl.plot(manual_times[:-1], time_dependent_concentrations[:,24-1])
+	pl.plot(manual_times[:-1], time_dependent_concentrations[:,24-1]/np.sum(time_dependent_concentrations[-1,:]),label='Fe XXIV')
+	pl.plot(manual_times[:-1], time_dependent_concentrations[:,25-1]/np.sum(time_dependent_concentrations[-1,:]),label='Fe XXV')
+	pl.plot(manual_times[:-1], time_dependent_concentrations[:,26-1]/np.sum(time_dependent_concentrations[-1,:]),label='Fe XXVI')
+	# pl.plot(manual_times[:-1], time_dependent_concentrations[:,26-1])
 	pl.legend()
 
 

@@ -16,23 +16,6 @@ def calc_xi_from_countrate(countrate,meanrate,meanxi):
 	return meanxi*countrate/meanrate
 
 
-# def net_rate(n_e,n_xi,n_xip1,n_xim1,alpha_rec, alpha_recm1, I_rat, I_ratm1):
-# 	# Time dependence of ionization balance (dn_Xi/dt)
-# 	# electron density, relative densities of ions (i, i+1, i-1), recombination coefficients, ionization rates
-# 	recomb    = - n_xi * alpha_recm1 # recombination of Xi -> Xi-1
-# 	recomb_p1 = n_xip1 * alpha_rec   # recombination of Xi+1 -> Xi
-# 	ioniz     = - n_xi * I_rat             # ionization of Xi -> Xi+1
-# 	ioniz_m1  = n_xim1 * I_ratm1           # ionization of Xi-1 -> Xi
-# 	# print 'recombination rate:',recomb
-# 	# print 'recombination rate of above ion:', recomb_p1
-# 	# print 'ionization rate:', ioniz
-# 	# print 'ionization rate of below ion:', ioniz_m1
-# 	# exit()
-# 	return recomb + recomb_p1 + ioniz + ioniz_m1
-
-def t_eq(n_e, n_xi, n_xip1 , alpha_rec, alpha_recm1):
-	return (alpha_rec * n_e)**-1 * ((alpha_recm1/alpha_rec)+(n_xip1/n_xi))**-1
-
 class pion_rates:
 	"""Big stupid class for holding data. To be tidied up nicely later, when I can be bothered."""
 
@@ -154,7 +137,7 @@ class pion_concentrations:
 		return np.array(filtered_data)
 
 	def filter_ion(self,element,ion):
-		print '\tFiltering concentrations table for',element,ion
+		# print '\tFiltering concentrations table for',element,ion
 		filtered_data=[]
 		for sub_array in self.data_stack:
 			filtered_sub_array=sub_array[sub_array[:,0]==element]
@@ -171,7 +154,7 @@ class pion_concentrations:
 			ions=[ions]
 		concentrations=[]
 		for ion in ions:
-			print '\nGetting equilibrium concentration of',element,roman.toRoman(ion)
+			# print '\nGetting equilibrium concentration of',element,roman.toRoman(ion)
 			filtered_array=self.filter_ion(element,roman.toRoman(ion))
 			# print filtered_array
 			if sum(filtered_array)==0:
@@ -204,7 +187,7 @@ class lightcurve:
 	def rebin(self,factor):
 		"""Function to resample the lightcurve. Probably necessary."""
 		### This is very crude and could use re-writing.
-		print '\tResampling lightcurve ('+self.filename+') by a factor of',factor
+		print '\tRebinning lightcurve ('+self.filename+') by a factor of',factor
 		self.time=self.time[::factor]
 		n_timesteps=len(self.countrate)
 		remainder=n_timesteps%factor
@@ -226,7 +209,7 @@ class lightcurve:
 		pass
 
 	def spline(self):
-		"""Fit a splint to lightcurve"""
+		"""Fit a spline to lightcurve"""
 		if not self.filtered:
 			print 'WARNING: Lightcurve should be filtered for zeros (lighcurve.filter_null()) before fitting spline'
 		lc_spline=spline(self.time,self.countrate,s=0)

@@ -10,7 +10,7 @@ elements=['Fe']
 # Load lightcurve
 test_lightcurve=lightcurve('example_lightcurve.lc')
 test_lightcurve.cut_interval(5.856e8+128000,5.856e8+140000)
-test_lightcurve.rebin(10)
+test_lightcurve.rebin(100)
 test_lightcurve.filter_null()
 
 # Mean ionization - 10^3 seems reasonable...
