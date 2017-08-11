@@ -25,9 +25,9 @@ mean_countrate=test_lightcurve.mean
 mean_xi=5000.
 element='Fe'
 
-### Silva et al. 2016 says constant e density, but what should it be??
-### Should be HII dominated, so ne ~ nH
 
+### Note that these are spex densities! hden is in units of 10^20/m^3.
+### Silva et al. (2016) use 10^7/cm^3 as representative value, corresponds to 10^-7 in these units.
 densities=[1.e-6]
 
 for density in densities:
