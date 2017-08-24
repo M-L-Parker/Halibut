@@ -4,21 +4,22 @@ import numpy as np
 import pylab as pl
 from ufo_functions import *
 import roman
+import os
 
 
 
 # Load lightcurve
-test_lightcurve=lightcurve('example_lightcurve.lc')
+lc_filename='example_lightcurve.lc'
+test_lightcurve=lightcurve(lc_filename)
 test_lightcurve.cut_interval(5.856e8+128000,5.856e8+140000)
-test_lightcurve.rebin(10)
+test_lightcurve.rebin(10) # higher number = bigger time bins
 test_lightcurve.filter_null()
 
 # Define time resolution, resample lightcurve
-resample_factor=10
+resample_factor=1 # higher number = smaller time bins 
 lc_spline=test_lightcurve.spline()
-# print len(test_lightcurve.time)
-# exit()
 manual_times=np.linspace(min(test_lightcurve.time),max(test_lightcurve.time),resample_factor*len(test_lightcurve.time))
+time_resolution=float(max(manual_times)-min(manual_times))/float(len(manual_times))
 
 # Mean ionization - 10^3 seems reasonable...
 mean_countrate=test_lightcurve.mean
@@ -28,7 +29,10 @@ element='Fe'
 
 ### Note that these are spex densities! hden is in units of 10^20/m^3.
 ### Silva et al. (2016) use 10^7/cm^3 as representative value, corresponds to 10^-7 in these units.
-densities=[1.e-6]
+densities=[1.e-7]
+
+
+toolbar_width=60
 
 for density in densities:
 
@@ -43,20 +47,14 @@ for density in densities:
 	concentrations=pion_concentrations(density=density)
 
 	true_density=density*1.e20
-
+	print '\nCalculating time-dependent ion concentrations for:'
+	print '\tDensity:',true_density,'m^-3'
+	print '\tElement:',element
+	print 'Sampling every',time_resolution,'seconds:'
 
 	# Get intial ion concentrations
-	initial_concs=concentrations.get_concentrations(element, ions, mean_xi)
-	current_concs=initial_concs#*density
-
-	# print sum(current_concs)
-	# exit()
-
-	# temp_concs=np.zeros(current_concs.shape)
-
-	# print sum(initial_concs)
-	# print sum(current_concs)
-	# exit()
+	initial_concs=concentrations.get_concentrations(element, ions, initial_xi)
+	current_concs=initial_concs
 
 	time_dependent_concentrations=[]
 	delta_ion=0
@@ -69,14 +67,15 @@ for density in densities:
 
 	xi_values=[]
 
-	# for ion in ions:
+
 	for t_step, countrate in zip(range(0,len(manual_times)), lc_spline(manual_times)):
 		time=manual_times[t_step]
-		# temp_concs=np.copy(current_concs)
+
+		### This needs modifying to not run every step. I can't be bothered now.
+		toolbar_update(float(t_step)/float(len(manual_times)),toolbar_width)
 
 		if t_step != len(manual_times)-1:
 			delta_t=manual_times[t_step+1]-time
-			# print float(time-min(manual_times))/float(max(manual_times)-min(manual_times))
 
 			current_xi=calc_xi_from_countrate(countrate, mean_countrate, mean_xi)
 			xi_values.append(current_xi)
@@ -85,56 +84,29 @@ for density in densities:
 
 			current_concs=current_concs+net_rates*delta_t
 
-			# print 'ionization:',current_xi
-			#### Some sort of convergence needed here?
-			# print 'Ion',element, roman.toRoman(ion)
-
-
-
-			# # if no ions in state and adjacent states, set no ions for next step
-			# if current_concs[24]==0. and current_concs[24-1]==0. and current_concs[24+1]==0:
-			# 	temp_concs[24]=0
-			# 	i_rate=0
-			# 	r_rate=0
-			# else:
-			# 	ion_rates=rates.get_ion_rates(element,ion,np.log10(current_xi))
-			# 	i_rate=ion_rates[0]*current_concs[24]
-			# 	r_rate=ion_rates[1]*current_concs[24]
 			i_rates.append(temp_i_rates[24])
 			r_rates.append(temp_r_rates[24])
-
-			# 	ion_rates_m1=rates.get_ion_rates(element,ion-1,np.log10(current_xi))
-			# i_rate_m1=ion_rates_m1[0]*current_concs[24-1]
 			i_rate_m1=temp_i_rates[23]
-			# 	ion_rates_p1=rates.get_ion_rates(element,ion+1,np.log10(current_xi))
-			# i_rate_p1=ion_rates_p1[0]*current_concs[24+1]
 			r_rate_p1=temp_r_rates[25]
 
 			i_rates_m1.append(i_rate_m1)
 			r_rates_p1.append(r_rate_p1)
 
-			# 	delta_ion = i_rate_m1+r_rate_p1-i_rate-r_rate
-			# 	temp_concs[24]=current_concs[24]+delta_ion*delta_t
-			# 	# print current_concs[24], delta_ion*delta_t
-
-			# print 'Rates:', i_rate, r_rate
-			# print 'Current concentration:', current_concs[24]
-
-		# exit()
-			# current_concs=temp_concs
-			# print current_concs
-			# raw_input()
-
 			time_dependent_concentrations.append(current_concs)
+	toolbar_update(1,toolbar_width)
+
+	print '\nDone.'
+
+	# Final time-dependent ion concentrations array for element. Axis 0 is time, axis 1 ion number
 	time_dependent_concentrations=np.array(time_dependent_concentrations)
-	# print time_dependent_concentrations.shape
-	# print time_dependent_concentrations.shape
+
+	print '\nPlotting test figure:'
+
 	fig=pl.figure(figsize=(6,12))
 
 	ax1=pl.subplot(411)
 	ax1.set_ylabel(r'$\xi$')
 	pl.plot(manual_times[:-1],xi_values)
-
 
 
 	ax2=pl.subplot(412)
@@ -152,20 +124,28 @@ for density in densities:
 	pl.legend()
 
 
-
 	ax4=pl.subplot(414)
-	# ax4.set_ylim(0,1)
-	# ax2.set_yscale('log')
-	# pl.plot(manual_times[:-1], time_dependent_concentrations[:,26])
-	# print time_dependent_concentrations[:,25-1]
-	# pl.plot(manual_times[:-1], time_dependent_concentrations[:,24-1])
 	pl.plot(manual_times[:-1], time_dependent_concentrations[:,24-1]/np.sum(time_dependent_concentrations[-1,:]),label='Fe XXIV')
 	pl.plot(manual_times[:-1], time_dependent_concentrations[:,25-1]/np.sum(time_dependent_concentrations[-1,:]),label='Fe XXV')
 	pl.plot(manual_times[:-1], time_dependent_concentrations[:,26-1]/np.sum(time_dependent_concentrations[-1,:]),label='Fe XXVI')
-	# pl.plot(manual_times[:-1], time_dependent_concentrations[:,26-1])
 	pl.legend()
 
 
 	# pl.show()
 	pl.savefig('Fe_XXV_density%s_test.pdf' % str(density) ,bbox_inches='tight')
+	print '\tSaved as Fe_XXV_density%s_test.pdf' % str(density)
+
+	print '\nSaving ion concentrations:'
+	output_dir='time_dependent_ions'
+	lightcurve_stem=''.join(lc_filename.split('.')[:-1])
+	outfilename='ion_concs_'+lightcurve_stem+'_'+element+'_'+str(density)+'.npz'
+	if not os.path.exists(output_dir):
+		print '\tPath',output_dir,'does not exist, making folder'
+		os.mkdir(output_dir)
+	if os.path.exists(output_dir+'/'+outfilename):
+		print '\tFile',outfilename,'already exists, deleting'
+		os.remove(output_dir+'/'+outfilename)
+	np.savez(output_dir+'/'+outfilename, times=manual_times, concentrations='time_dependent_concentrations',\
+			ionizations=xi_values, lightcurve=lc_spline(manual_times))
+	print '\tSaved as',outfilename
 

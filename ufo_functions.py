@@ -6,6 +6,7 @@ from glob import glob
 from astropy.io import fits
 import roman
 from scipy.interpolate import UnivariateSpline as spline
+import sys
 
 
 def calc_xi(n_total,r,flux):
@@ -15,6 +16,15 @@ def calc_xi_from_countrate(countrate,meanrate,meanxi):
 	# print countrate, meanrate, meanxi
 	return meanxi*countrate/meanrate
 
+def toolbar_update(fraction,toolbar_width):
+	fraction=int(fraction*toolbar_width)
+	sys.stdout.write('[')
+	sys.stdout.write('%s' % ('=' * max([fraction-1,0])))
+	sys.stdout.write('>')
+	sys.stdout.write('%s' % (' ' * (toolbar_width-max([fraction,1]))))
+	sys.stdout.write(']')
+	sys.stdout.write("\b" * (toolbar_width+2))
+	sys.stdout.flush()
 
 class pion_rates:
 	"""Big stupid class for holding data. To be tidied up nicely later, when I can be bothered."""
