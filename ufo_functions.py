@@ -241,17 +241,7 @@ class lightcurve:
 
 
 if __name__ == '__main__':
-	# Test functions. Write main code to call.
-	
-	# Should I implement two cases? Long and short equilibrium timescales?
-	
-	# Can consider only a few ions. Probably helps lots. Focus on Si XIV / S XVI first? No detectable lines nearby
-	
-	# Use Stingray to do the timing.
-
-	# May need to optimise the code reasonably well.
-
-	#print "Doesn't actually do anything yet."
+	print 'Generating test plots for equilibrium concentrations/rates and lightcurve.'
 
 	rates=pion_rates()
 	concentrations=pion_concentrations()
@@ -315,15 +305,7 @@ if __name__ == '__main__':
 	spline_test=test_lightcurve.spline()
 	dummy_times=np.linspace(min(test_lightcurve.time),max(test_lightcurve.time),100000)
 	pl.plot(dummy_times,spline_test(dummy_times),color='dodgerblue',label='Spline')
-	# pl.plot()
+	
 	pl.legend()
 	pl.savefig('lightcurve_test.pdf',bbox_inches='tight')
 	
-	# pl.show()
-
-	# pl.plot(xi_vals,fexxv_rates[:,0,2],label='Fe XXV Ionization')
-	# pl.plot(xi_vals,fexxv_rates[:,0,3],label='Fe XXV Recombination')
-	# pl.plot(xi_vals,fexxvi_rates[:,0,2],label='Fe XXVI Ionization')
-	# pl.plot(xi_vals,fexxvi_rates[:,0,3],label='Fe XXVI Recombination')
-
-	# pl.show()

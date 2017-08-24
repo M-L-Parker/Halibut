@@ -59,13 +59,8 @@ for density in densities:
 		current_concs=initial_concs
 
 		time_dependent_concentrations=[]
-		delta_ion=0
-
-		i_rates=[]
-		r_rates=[]
-
-		i_rates_m1=[]
-		r_rates_p1=[]
+		ionization_rates=[]
+		recombination_rates=[]
 
 		xi_values=[]
 
@@ -87,12 +82,16 @@ for density in densities:
 				current_concs=current_concs+net_rates*delta_t
 
 				time_dependent_concentrations.append(current_concs)
+				ionization_rates.append(temp_i_rates)
+				recombination_rates.append(temp_r_rates)
 		toolbar_update(1,toolbar_width)
 
 		print '\nDone.'
 
 		# Final time-dependent ion concentrations array for element. Axis 0 is time, axis 1 ion number
 		time_dependent_concentrations=np.array(time_dependent_concentrations)
+		ionization_rates=np.array(ionization_rates)
+		recombination_rates = np.array(recombination_rates)
 
 		print '\nSaving ion concentrations:'
 		output_dir='time_dependent_ions'
@@ -104,7 +103,8 @@ for density in densities:
 		if os.path.exists(output_dir+'/'+outfilename):
 			print '\tFile',outfilename,'already exists, deleting'
 			os.remove(output_dir+'/'+outfilename)
-		np.savez(output_dir+'/'+outfilename, times=manual_times, concentrations='time_dependent_concentrations',\
-				ionizations=xi_values, lightcurve=lc_spline(manual_times))
+		np.savez(output_dir+'/'+outfilename, times=manual_times, concentrations=time_dependent_concentrations,\
+				ionizations=xi_values, lightcurve=lc_spline(manual_times),ionization_rates=ionization_rates,\
+				recombination_rates=recombination_rates)
 		print '\tSaved as',outfilename
 
