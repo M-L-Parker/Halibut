@@ -240,10 +240,68 @@ class lightcurve:
 
 
 class settings:
-	"""Placeholder. Will be used to load settings file"""
-	def __init__(self, arg):
-		super(settings, self).__init__()
-		self.arg = arg
+	"""Loads settings file"""
+	def __init__(self, filename):
+		self.read_file(filename)
+		
+		if 'lightcurve' in self.settings_dict:
+			self.lightcurve=self.settings_dict['lightcurve']
+		else:
+			print 'WARNING: lightcurve not found in settings'
+		
+		
+		if 'elements' in self.settings_dict:
+			self.elements=self.settings_dict['elements'].split()
+		else:
+			print 'WARNING: elements not found in settings'
+		
+		
+		if 'cut_intervals' in self.settings_dict:
+			intervals=self.settings_dict['cut_intervals'].split()
+			self.cut_intervals=[(float(x),float(y)) for x, y in zip(intervals[::2],intervals[1::2])]
+
+
+		if 'rebin' in self.settings_dict:
+			self.rebin=int(self.settings_dict['rebin'])
+		else:
+			self.rebin=None
+
+
+		if 'resample' in self.settings_dict:
+			self.resample=int(self.settings_dict['resample'])
+		else:
+			self.resample=1
+
+
+		if 'xi' in self.settings_dict:
+			self.xi = float(self.settings_dict['xi'])
+		else:
+			print 'WARNING: ionization not defined in settings file'
+
+
+		if 'densities' in self.settings_dict:
+			self.densities=[float(x) for x in self.settings_dict['densities'].split()]
+		else:
+			print 'WARNING: densities not defined in settings file'
+
+
+		if 'column' in self.settings_dict:
+			self.column=self.settings_dict['column']
+		else:
+			print 'WARNING: column density not defined. This may eventually be relevant'
+		
+
+
+	def read_file(self,filename):
+		infile=open(filename, 'r')
+		keys=[]
+		vals=[]
+		for line in infile:
+			temp=line.strip().split()
+			keys.append(temp[0])
+			vals.append(' '.join(temp[1:]))
+		self.settings_dict=dict([(x,y) for x,y in zip(keys, vals)])
+
 		
 
 

@@ -8,9 +8,10 @@ import os
 
 
 ##### Need to make a settings file to hold this stuff! This is impractical. Too many scripts.
-elements=['Fe','Si','S','Ne', 'Mg', 'Ar','Ca']
-densities=[1e-7] #Units of 10^20 m^-3
-lc_name='example_lightcurve.lc'
+# elements=['Fe','Si','S','Ne', 'Mg', 'Ar','Ca']
+# densities=[1e-7] #Units of 10^20 m^-3
+#probably need a H column density somewhere as well. Use IRAS default?
+# lc_name='example_lightcurve.lc'
 
 
 def get_lightcurve():
@@ -19,6 +20,10 @@ def get_lightcurve():
 def main():
 
 	### load settings - to be implemented
+	run_settings=settings('halibut_settings.txt')
+	elements=run_settings.elements
+	densities=run_settings.densities
+	lc_name=run_settings.lightcurve
 
 	for density in densities:
 		filenames=[]
@@ -42,7 +47,6 @@ def main():
 
 		concentrations=[np.load(x)['concentrations'] for x in filenames] # Can't convert to array because different sizes. Slightly irritating.
 		
-		# print files
 
 		for i,t in enumerate(times[:-1]):
 			countrate=lightcurve[i]
@@ -51,6 +55,7 @@ def main():
 				# Concnetrations of ions for each element at each timestep.
 				elemental_concentrations=concentrations[j][i]
 				# Need to apply to model, save spectrum (don't simulate, waste of time)
+				# What the hell are the units here??
 
 
 

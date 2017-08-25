@@ -7,8 +7,7 @@ In brief, it takes a lightcurve and calculates the ion abundances and correspond
 
 Based on the method described by Silva, Uttley & Constantini (2016).
 
-Ion concentrations and ionization/recombination rates are calculated using SPEX: 
-https://www.sron.nl/astrophysics-spex (Kaastra, Mewe & Nieuwenhuijzen, 1996)
+Ion concentrations and ionization/recombination rates are calculated using SPEX (Kaastra, Mewe & Nieuwenhuijzen, 1996).
 
 ## Requirements:
 * Python 2.6/7
@@ -18,9 +17,9 @@ https://www.sron.nl/astrophysics-spex (Kaastra, Mewe & Nieuwenhuijzen, 1996)
 
 ## Sequence:
 1. Run calc_rates.py to generate tables of equilibrium concentrations and ionization rates. This just calls SPEX a bunch of times, very badly.
-  * Run fe_xxv_test.py to check these are working. This runs the calculations for Fe only, and produces some diagnostic plots.
+     Run fe_xxv_test.py to check these are working. This runs the calculations for Fe only, and produces some diagnostic plots.
 2. Run the full ion solver, solve_ions.py. This calculates the time-dependent ionization rates and ion concentrations for a given lightcurve, and saves them to .npz files
-  * Use output_analyser.py to view these output files, check that everything looks reasonable. At higher densities it may be necessary to sample the lightcurve more frequently (use the resample_factor parameter in solve_ions.py) to increase the time resolution.
+     Use output_analyser.py to view these output files, check that everything looks reasonable. At higher densities it may be necessary to sample the lightcurve more frequently (use the resample_factor parameter in solve_ions.py) to increase the time resolution.
 3. Run generate_models.py to simulate spectra based on the output ion concentrations. [NOT YET IMPLEMENTED]
 4. Get lag products, using Stingray [NOT YET IMPLEMENTED]
 

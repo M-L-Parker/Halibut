@@ -6,28 +6,34 @@ from ufo_functions import *
 import roman
 import os
 
-elements=['Fe','Si','S','Ne', 'Mg', 'Ar','Ca']
+
+run_settings=settings('halibut_settings.txt')
+elements=run_settings.elements
+densities=run_settings.densities
+lc_filename=run_settings.lightcurve
+
+# elements=['Fe','Si','S','Ne', 'Mg', 'Ar','Ca']
 
 # Load lightcurve
-lc_filename='example_lightcurve.lc'
+# lc_filename='example_lightcurve.lc'
 test_lightcurve=lightcurve(lc_filename)
-test_lightcurve.cut_interval(5.856e8+128000,5.856e8+140000)
-test_lightcurve.rebin(10)
+for interval in run_settings.cut_intervals:
+	test_lightcurve.cut_interval(interval[0],interval[1])
+if run_settings.rebin is not None:
+	test_lightcurve.rebin(run_settings.rebin)
 test_lightcurve.filter_null()
 
 # Define time resolution, resample lightcurve
-resample_factor=1 # higher number = smaller time bins 
+resample_factor=run_settings.resample # higher number = smaller time bins 
 lc_spline=test_lightcurve.spline()
 manual_times=np.linspace(min(test_lightcurve.time),max(test_lightcurve.time),resample_factor*len(test_lightcurve.time))
 time_resolution=float(max(manual_times)-min(manual_times))/float(len(manual_times))
 
 # Mean ionization - 10^3 seems reasonable...
 mean_countrate=test_lightcurve.mean
-mean_xi=5000.
-densities=[1.e-8,1e-7] #Units of 10^20 m^-3
+mean_xi=run_settings.xi
+densities=run_settings.densities #Units of 10^20 m^-3
 
-### Silva et al. 2016 says constant e density, but what should it be??
-### Should be HII dominated, so ne ~ nH
 
 initial_countrate=test_lightcurve.countrate[0]
 initial_xi=calc_xi_from_countrate(initial_countrate,mean_countrate,mean_xi)
