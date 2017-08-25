@@ -239,6 +239,14 @@ class lightcurve:
 
 
 
+class settings:
+	"""Placeholder. Will be used to load settings file"""
+	def __init__(self, arg):
+		super(settings, self).__init__()
+		self.arg = arg
+		
+
+
 
 if __name__ == '__main__':
 	print 'Generating test plots for equilibrium concentrations/rates and lightcurve.'
