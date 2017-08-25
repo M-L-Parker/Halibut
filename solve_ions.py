@@ -108,3 +108,6 @@ for density in densities:
 				recombination_rates=recombination_rates)
 		print '\tSaved as',outfilename
 
+print '\nCalculations complete.'
+print '\tTo view output, use output_analyser.py'
+print '\tTo fake models based on these calculations, use generate_models.py'
