@@ -1,5 +1,20 @@
 # Halibut
-Because X-ray software is fish now.
+### Because X-ray software is fish now.
+
+This is a series of scripts for estimating the X-ray timing/variability properties of ionized gas responding to an X-ray source. 
+
+In brief, it takes a lightcurve and calculates the ion abundances and corresponding rates at each time step (allowing the lightcurve to be sampled at an arbitrary frequency). These numbers are then used to calculate the spectrum of absorbing gas at each step, which can then in turn be used as input to timing/variability analysis.
+
+Based on the method described by Silva, Uttley & Constantini (2016).
+
+Ion concentrations and ionization/recombination rates are calculated using SPEX: 
+https://www.sron.nl/astrophysics-spex (Kaastra, Mewe & Nieuwenhuijzen, 1996)
+
+## Requirements:
+* Python 2.6/7
+* SPEX: https://www.sron.nl/astrophysics-spex
+* astropy: http://www.astropy.org/
+* Stingray: http://stingraysoftware.github.io/
 
 ## Sequence:
 1. Run calc_rates.py to generate tables of equilibrium concentrations and ionization rates. This just calls SPEX a bunch of times, very badly.
