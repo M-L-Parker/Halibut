@@ -19,4 +19,5 @@ for density in densities:
 				calc\n\
 				asc file rates_%s_%s 1 2 rate\n\
 				asc file concs_%s_%s 1 2 icon\n\
-				' % (str(xi),str(density),str(density), str(xi),str(density), str(xi)), shell=True)
+				q\n\
+				EOF\n' % (str(xi),str(density),str(density), str(xi),str(density), str(xi)), shell=True)
