@@ -10,6 +10,7 @@ import stingray
 def load_spectra(spectra_stem='spectrum_*.qdp'):
 	toolbar_width=60
 	print '\nLoading spectra...'
+	print "This is real slow, but I can't be bothered to fix it. Sorry."
 
 	spectra_raw=glob('model_spectra/'+spectra_stem)
 	indices=[int(x.split('_')[-1].split('.')[0]) for x in spectra_raw]
@@ -30,6 +31,20 @@ def load_spectra(spectra_stem='spectrum_*.qdp'):
 	return E, spec_array
 
 
+def get_binned_lightcurve(energies, eband, spectra,times):
+	'''Returns the lightcurve (in stingray format) for a given energy band. Eband should be an iterable object with a lower and upper limit limit'''
+	### Find indices of matching energies. This is horribly inelegant.
+	# print eband[0],eband[1]
+	lowindex=np.where(energies>eband[0])[0][0]
+	highindex=np.where(energies<eband[1])[-1][-1]
+	# print lowindex, highindex
+	counts=np.sum(spectra[:,lowindex:highindex+1],axis=1)
+	# pl.plot(counts)
+	return stingray.lightcurve.Lightcurve(times[:-1],counts,input_counts=False)
+
+
+
+
 def main():
 	run_settings=settings('halibut_settings.txt')
 	elements=run_settings.elements
@@ -46,10 +61,47 @@ def main():
 	mean_cr=np.mean(lightcurve)
 
 
-	energies, spectra=load_spectra()
-	reference_lc=np.mean(spectra,axis=1) #reference (average) lightcurve
+	# energies, spectra=load_spectra()
+	print '\nLoading spectra, energies from text files. Remember to turn this off and load properly.'
+	energies=np.loadtxt('energies_temp.txt')
+	spectra=np.loadtxt('spectra_temp.txt')
 
-	# pl.plot(reference_lc)
+	#### Save to files so I can skip loading for dev purposes.
+	# np.savetxt('energies_temp.txt',energies)
+	# np.savetxt('spectra_temp.txt',spectra)
+
+
+
+	reference_lc=stingray.lightcurve.Lightcurve(times[:-1],np.sum(spectra,axis=1),input_counts=False) #reference (total) lightcurve
+
+	energy_bins=np.logspace(np.log10(0.3),np.log10(10),101)
+
+	print '\nCalculating binned lightcurves...'
+	print 'This needs to be added to the settings. Fix it.'
+	lightcurves=[]
+	for elow,ehigh in zip(energy_bins[:-1],energy_bins[1:]):
+		lightcurves.append(get_binned_lightcurve(energies,(elow,ehigh),spectra,times))
+	print 'Done.'
+
+
+	print '\nCalculating cross spectra...'
+	cross_spectra=[]
+	ax=pl.subplot(111)
+	ax.set_xscale('log')
+	for lightcurve in lightcurves:
+		cross_spectra.append(stingray.crossspectrum.Crossspectrum(lightcurve,reference_lc))
+		pl.plot(cross_spectra[-1].freq,cross_spectra[-1].time_lag())
+	print 'Done.'
+
+
+	# print '\nCalculating lags...'
+	# lags=[x.time_lag() for x in cross_spectra]
+	# print 'Done.'
+
+
+	pl.show()
+	#### Plot reference lightcurve
+	# reference_lc.plot()
 	# pl.show()
 
 	#### Make image of spectra over time. TBC.

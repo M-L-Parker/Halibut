@@ -8,6 +8,8 @@ import roman
 from scipy.interpolate import UnivariateSpline as spline
 import sys
 
+def spex2cgs(density):
+	return density*1.e14
 
 def calc_xi(n_total,r,flux):
 	return flux/(n_total*r**2)
@@ -289,7 +291,32 @@ class settings:
 			self.column=self.settings_dict['column']
 		else:
 			print 'WARNING: column density not defined. This may eventually be relevant'
-		
+
+		if 'spectra_dir' in self.settings_dict:
+			self.spectra_dir=self.settings_dict['spectra_dir']
+			if self.spectra_dir[-1] != '/':
+				self.spectra_dir+='/'
+		else:
+			self.spectra_dir=''
+
+		if 'clobber' in self.settings_dict:
+			if self.settings_dict['spectra_dir']=='False':
+				self.clobber=False
+			elif self.settings_dict['spectra_dir']=='True':
+				self.clobber=True
+			else:
+				print 'WARNING: clobber can only be True or False. Assuming False.'
+				self.clobber=False
+		else:
+			self.clobber=False	
+
+		if 'xi_range' in self.settings_dict:
+			vals=self.settings_dict['xi_range']
+			# print vals
+			# exit()
+			self.xi_range=np.linspace(float(vals.split()[0]),float(vals.split()[1]),float(vals.split()[2]))
+		else:
+			print 'WARNING: ionization range not defined in settings file'
 
 
 	def read_file(self,filename):

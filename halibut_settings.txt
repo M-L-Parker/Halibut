@@ -4,5 +4,8 @@ cut_intervals 585728000 585740000
 rebin 10
 resample 10
 xi 5000
-densities 1.e-8
+xi_range 2 5 100
+densities  1.e-8 3.e-7 1.e-7 3.e-6 1.e-6 
 column 1.e27
+spectra_dir /scratch/mlparker/ufo_timing_spectra
+clobber False

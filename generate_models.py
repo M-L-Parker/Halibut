@@ -3,6 +3,7 @@
 import numpy as np
 import pylab as pl
 import os
+from shutil import move
 from ufo_functions import *
 from glob import glob
 from subprocess import call
@@ -13,17 +14,18 @@ def generate_spex_string(commands,normalization,outfilename):
 	for c in commands:
 		command_str+=c+'\n'
 	command_str+='c\npar sh\npar sh free\nmo sh\n'
-	plot_str='p de xs\np ty mo\np ux ke\np uy a\np rx 2 10\np ry 0 10\np x  log\np y  lin\np fil dis f\np\n'
+	plot_str='p de xs\np ty mo\np ux ke\np uy a\np rx 2 10\np ry 0 0.3\np x  log\np y  lin\np fil dis f\np\n'
 	command_str+=plot_str
 	out_str='plot adum '+str(outfilename)+' over\n'
 	command_str+=out_str+'q\nEOF\n'
 	return command_str
 	
-def tidy_spectra():
-	if not os.path.exists('model_spectra'):
-		os.mkdir('model_spectra')
-	for filename in glob('spectrum_*.qdp'):
-		os.rename(filename,'model_spectra/'+filename)
+def tidy_spectra(stem,model_dir):
+	# if not os.path.exists('model_spectra'):
+		# os.mkdir('model_spectra')
+	for filename in glob(stem+'.qdp'):
+		print filename,model_dir+filename
+		move(filename,model_dir+filename)
 
 def main():
 	run_settings=settings('halibut_settings.txt')
@@ -31,6 +33,7 @@ def main():
 	densities=run_settings.densities
 	column=run_settings.column
 	lc_name=run_settings.lightcurve
+	# spectra_dir=
 
 	for density in densities:
 		filenames=[]
@@ -60,24 +63,28 @@ def main():
 			countrate=lightcurve[i]
 			pow_norm=countrate/mean_cr*12.566 # I have no idea where this number came from, Ciro wrote it down once.
 			commands=[]
-			for j,element in enumerate(elements):
 
-				# Concnetrations of ions for each element at each timestep.
-				elemental_concentrations=concentrations[j][i]
+			if not os.path.exists(run_settings.spectra_dir+'density_%s_spectrum_%s.qdp' % (str(density),str(i))) or run_settings.clobber:
+				for j,element in enumerate(elements):
 
-				if len(elemental_concentrations)>=9:
-					for k,conc in enumerate(elemental_concentrations):
-						if conc>0:
-							# print conc, column,float(conc)*float(column)
-							commands.append('par 1 1 '+element.lower()+'0'*(2-len(str(k+1)))+str(k+1)+' v '+str(np.log10(float(conc)*float(column))))
-				else:	
-					for k,conc in enumerate(elemental_concentrations):
-						if conc>0:
-							commands.append('par 1 1 '+element.lower()+str(k+1)+' v '+str(np.log10(float(conc)*float(column))))
+					# Concnetrations of ions for each element at each timestep.
+					elemental_concentrations=concentrations[j][i]
 
-			spex_string=generate_spex_string(commands,pow_norm,'spectrum_%s' % str(i))
-			call(spex_string,shell=True)
-			tidy_spectra()
+					if len(elemental_concentrations)>=9:
+						for k,conc in enumerate(elemental_concentrations):
+							if conc>0:
+								# print conc, column,float(conc)*float(column)
+								commands.append('par 1 1 '+element.lower()+'0'*(2-len(str(k+1)))+str(k+1)+' v '+str(np.log10(float(conc)*float(column))))
+					else:	
+						for k,conc in enumerate(elemental_concentrations):
+							if conc>0:
+								commands.append('par 1 1 '+element.lower()+str(k+1)+' v '+str(np.log10(float(conc)*float(column))))
+
+				spex_string=generate_spex_string(commands,pow_norm,'density_%s_spectrum_%s' % (str(density),str(i)))
+				call(spex_string,shell=True)
+				tidy_spectra('density_*_spectrum_*',run_settings.spectra_dir)
+			else:
+				print '\tFile:',run_settings.spectra_dir+'density_%s_spectrum_%s.qdp' % (str(density),str(i)),'already exists, skipping...'
 
 
 
