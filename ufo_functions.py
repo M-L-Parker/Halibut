@@ -300,9 +300,9 @@ class settings:
 			self.spectra_dir=''
 
 		if 'clobber' in self.settings_dict:
-			if self.settings_dict['spectra_dir']=='False':
+			if self.settings_dict['spectra_dir'] in ['False','false']:
 				self.clobber=False
-			elif self.settings_dict['spectra_dir']=='True':
+			elif self.settings_dict['spectra_dir'] in ['True','true']:
 				self.clobber=True
 			else:
 				print 'WARNING: clobber can only be True or False. Assuming False.'

@@ -62,7 +62,7 @@ def main():
 
 
 	# energies, spectra=load_spectra()
-	print '\nLoading spectra, energies from text files. Remember to turn this off and load properly.'
+	# print '\nLoading spectra, energies from text files. Remember to turn this off and load properly.'
 	energies=np.loadtxt('energies_temp.txt')
 	spectra=np.loadtxt('spectra_temp.txt')
 
