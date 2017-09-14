@@ -90,6 +90,7 @@ for density in densities:
 					current_xi=calc_xi_from_countrate(countrate, mean_countrate, mean_xi)
 					xi_values.append(current_xi)
 
+					### This function needs upgrading to a better iterative method. See above.
 					net_rates, temp_i_rates, temp_r_rates = rates.get_net_rates(element, np.log10(current_xi), ions, current_concs)
 
 					current_concs=current_concs+net_rates*delta_t

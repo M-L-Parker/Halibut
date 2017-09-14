@@ -81,6 +81,7 @@ class pion_rates:
 		return i_spline(xi), r_spline(xi)
 
 	def get_net_rates(self,element,xi,ions,concentrations):
+		###### CHANGE THIS TO RUNGE-KUTTA?? Not sure if can be bothered, or if necessary. Just use a bajillion time steps...
 		r_rates=[]
 		i_rates=[]
 		net_rates=[]

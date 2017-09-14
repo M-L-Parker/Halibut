@@ -8,16 +8,22 @@ from ufo_functions import *
 from glob import glob
 from subprocess import call
 
-def generate_spex_string(commands,normalization,outfilename):
-	command_str='spex<<EOF\ncom slab\ncom po\ncom rel 2 1\n'
-	command_str+='par 1 2 norm v '+str(normalization)+'\n'
-	for c in commands:
-		command_str+=c+'\n'
-	command_str+='c\npar sh\npar sh free\nmo sh\n'
-	plot_str='p de xs\np ty mo\np ux ke\np uy a\np rx 2 10\np ry 0 0.3\np x  log\np y  lin\np fil dis f\np\n'
-	command_str+=plot_str
-	out_str='plot adum '+str(outfilename)+' over\n'
-	command_str+=out_str+'q\nEOF\n'
+def generate_spex_string(commands,outfilenames):
+	'''Commands should be a numpy array. index 0 corresponds to individual models, index 1 to commands'''
+	command_str='spex<<EOF\ncom slab\ncom po\ncom rel 2 1\np de xs\n'
+	# print commands
+	# exit()
+	for i,clist in enumerate(commands):
+		outfilename=outfilenames[i]
+		for c in clist:
+			command_str+=c+'\n'
+		command_str+='c\npar sh\npar sh free\nmo sh\n'
+		plot_str='p ty mo\np ux ke\np uy a\np rx 2 10\np ry 0 0.3\np x  log\np y  lin\np fil dis f\np\n'
+		command_str+=plot_str
+		out_str='plot adum '+str(outfilename)+' over\n'
+		command_str+=out_str
+	command_str+='q\nEOF\n'
+	# print len(command_str)z
 	return command_str
 	
 def tidy_spectra(stem,model_dir):
@@ -59,12 +65,16 @@ def main():
 		concentrations=[np.load(x)['concentrations'] for x in filenames] # Can't convert to array because different sizes. Slightly irritating.
 		
 
+		commands=[]
+		filenames=[]
 		for i,t in enumerate(times[:-1]):
 			countrate=lightcurve[i]
 			pow_norm=countrate/mean_cr*12.566 # I have no idea where this number came from, Ciro wrote it down once.
-			commands=[]
 
+			tstep_commands=[]
 			if not os.path.exists(run_settings.spectra_dir+'density_%s_spectrum_%s.qdp' % (str(density),str(i))) or run_settings.clobber:
+
+				tstep_commands.append('par 1 2 norm v '+str(pow_norm)+'\n')
 				for j,element in enumerate(elements):
 
 					# Concnetrations of ions for each element at each timestep.
@@ -74,17 +84,28 @@ def main():
 						for k,conc in enumerate(elemental_concentrations):
 							if conc>0:
 								# print conc, column,float(conc)*float(column)
-								commands.append('par 1 1 '+element.lower()+'0'*(2-len(str(k+1)))+str(k+1)+' v '+str(np.log10(float(conc)*float(column))))
+								tstep_commands.append('par 1 1 '+element.lower()+'0'*(2-len(str(k+1)))+str(k+1)+' v '+str(np.log10(float(conc)*float(column))))
 					else:	
 						for k,conc in enumerate(elemental_concentrations):
 							if conc>0:
-								commands.append('par 1 1 '+element.lower()+str(k+1)+' v '+str(np.log10(float(conc)*float(column))))
+								tstep_commands.append('par 1 1 '+element.lower()+str(k+1)+' v '+str(np.log10(float(conc)*float(column))))
+				commands.append(tstep_commands)
+				filenames.append(run_settings.spectra_dir+'density_%s_spectrum_%s.qdp' % (str(density),str(i)))
 
-				spex_string=generate_spex_string(commands,pow_norm,'density_%s_spectrum_%s' % (str(density),str(i)))
-				call(spex_string,shell=True)
-				tidy_spectra('density_*_spectrum_*',run_settings.spectra_dir)
 			else:
 				print '\tFile:',run_settings.spectra_dir+'density_%s_spectrum_%s.qdp' % (str(density),str(i)),'already exists, skipping...'
+
+		commands=np.array(commands)
+		spex_string=generate_spex_string(commands,filenames)
+
+		if os.path.exists('spex_temp.sh'):
+			os.remove('spex_temp.sh')
+		spex_command_script=open('spex_temp.sh','w')
+		spex_command_script.write(spex_string)
+
+
+		call('bash spex_temp.sh',shell=True)
+		tidy_spectra('density_*_spectrum_*',run_settings.spectra_dir)
 
 
 
