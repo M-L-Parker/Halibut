@@ -14,6 +14,7 @@ Ion concentrations and ionization/recombination rates are calculated using SPEX 
 * SPEX: https://www.sron.nl/astrophysics-spex
 * astropy: http://www.astropy.org/
 * Stingray: http://stingraysoftware.github.io/
+* h5py: http://www.h5py.org/
 
 ## Sequence:
 1. Run calc_rates.py to generate tables of equilibrium concentrations and ionization rates. This just calls SPEX a bunch of times, very badly.

@@ -5,45 +5,23 @@ import pylab as pl
 from ufo_functions import *
 from glob import glob
 import stingray
+import h5py
+from dcfirr import dcfirr
+
+colours=['dodgerblue','forestgreen','goldenrod','orangered','red'][::-1]
+ratio=True
 
 
-def load_spectra(spectra_stem='spectrum_*.qdp'):
-	# print spectra_stem
-	# exit()
-	toolbar_width=60
-	print '\nLoading spectra...'
-	print "This is real slow, but I can't be bothered to fix it. Sorry."
-
-	spectra_raw=glob(spectra_stem)
-	# print spectra_raw
-	indices=[int(x.split('_')[-1].split('.')[0]) for x in spectra_raw]
-	sorted_spectra=[y for x,y in sorted(zip(indices,spectra_raw))]
-	
-	spec_list=[]
-	n_spec=len(sorted_spectra)
-	for i,spectrum in enumerate(sorted_spectra):
-		toolbar_update(float(i)/float(n_spec),toolbar_width)
-		indata=np.loadtxt(spectrum,skiprows=1)
-		if i==0:
-			E=10.**indata[:,0]
-		F=indata[:,3]
-		spec_list.append(F)
-	toolbar_update(1,toolbar_width)
-	print '\nDone.',n_spec,'spectra loaded'
-	spec_array=np.array(spec_list)
-	return E, spec_array
-
-
-def get_binned_lightcurve(energies, eband, spectra,times):
+def get_binned_lightcurve(energies, eband, spectra_dset,times):
 	'''Returns the lightcurve (in stingray format) for a given energy band. Eband should be an iterable object with a lower and upper limit limit'''
 	### Find indices of matching energies. This is horribly inelegant.
 	# print eband[0],eband[1]
 	lowindex=np.where(energies>eband[0])[0][0]
 	highindex=np.where(energies<eband[1])[-1][-1]
 	# print lowindex, highindex
-	counts=np.sum(spectra[:,lowindex:highindex+1],axis=1)
+	counts=np.sum(spectra_dset[:,lowindex:highindex+1],axis=1)
 	# pl.plot(counts)
-	return stingray.lightcurve.Lightcurve(times[:-1],counts,input_counts=False)
+	return stingray.lightcurve.Lightcurve(times[1:counts.shape[0]+1],counts,input_counts=True)
 
 
 
@@ -64,46 +42,77 @@ def main():
 	lightcurve=temp_file['lightcurve']
 	mean_cr=np.mean(lightcurve)
 
-	for density in [1.e-10]:#densities:
-		energies, spectra=load_spectra(spectra_dir+'density_%s_spectrum_*.qdp' % str(density))
-		# print '\nLoading spectra, energies from text files. Remember to turn this off and load properly.'
-		# energies=np.loadtxt('energies_temp.txt')
-		# spectra=np.loadtxt('spectra_temp.txt')
-
-		#### Save to files so I can skip loading for dev purposes.
-		# np.savetxt('energies_temp.txt',energies)
-		# np.savetxt('spectra_temp.txt',spectra)
+	# print times.shape
 
 
+	fig1=pl.figure()
+	f1ax1=pl.subplot(211)
+	f1ax2=pl.subplot(212)
+	f1ax2.set_xlabel('time (s)')
+	f1ax2.set_ylabel(r'ratio (test/reference)')
+	f1ax1.set_ylabel(r'counts s$^{-1}$')
+	f1ax1.set_xlim(0,max(times))
+	f1ax2.set_xlim(0,max(times))
+	# f1ax2.set_ylim(0.42,0.55)
 
-		reference_lc=stingray.lightcurve.Lightcurve(times[:-1],np.sum(spectra,axis=1),input_counts=False) #reference (total) lightcurve
+	fig2=pl.figure()
+	f2ax1=pl.subplot(111)
+	f2ax1.set_xscale('log')
+	# f2ax
+	f2ax1.set_xlabel(r'$f\ (\mathrm{Hz})$')
+	f2ax1.set_ylabel('Lag (s)')
+
+	fig3=pl.figure()
+	f3ax1=pl.subplot(111)
+	f3ax1.set_xlim(-10000,10000)
+	f3ax1.set_xlabel('Lag (s)')
+	f3ax1.set_ylabel('Correlation')
+	# f3ax1.set_xscale('log')
+	# f3ax1.set_xlim(1)
+
+	for i,density in enumerate(densities):
+
+
+		print '\nLoading',spectra_dir+'spectral_data_density_%s.hdf5' % str(density)
+		infile=h5py.File(spectra_dir+'spectral_data_density_%s.hdf5' % str(density),'r')
+		spectra_dset=infile['spectra']
+		energies_dset=infile['energies']
 
 		energy_bins=np.logspace(np.log10(0.3),np.log10(10),101)
 
-		print '\nCalculating binned lightcurves...'
-		print 'This needs to be added to the settings. Fix it.'
-		lightcurves=[]
-		for elow,ehigh in zip(energy_bins[:-1],energy_bins[1:]):
-			lightcurves.append(get_binned_lightcurve(energies,(elow,ehigh),spectra,times))
-		print 'Done.'
+
+		test_lc=get_binned_lightcurve(energies_dset[:], (6.6,6.8), spectra_dset,times)
+		length=test_lc.counts.shape[0]
+		reference_lc=stingray.lightcurve.Lightcurve(times[1:length+1],lightcurve[:length])
+		if ratio:
+			ratio_lc=stingray.lightcurve.Lightcurve(times[1:length+1],test_lc.counts/reference_lc.counts,input_counts=False)
 
 
-		print '\nCalculating cross spectra...'
-		cross_spectra=[]
-		ax=pl.subplot(111)
-		ax.set_xscale('log')
-		for lightcurve in lightcurves:
-			cross_spectra.append(stingray.crossspectrum.Crossspectrum(lightcurve,reference_lc))
-			pl.plot(cross_spectra[-1].freq,cross_spectra[-1].time_lag())
-		print 'Done.'
+		if i==0:
+			f1ax1.plot(reference_lc.time,reference_lc.counts,color='k',lw=1)
+			np.savetxt('reference_lc',reference_lc.counts)
+			np.savetxt('times',reference_lc.time)
+		if ratio:
+			f1ax2.plot(ratio_lc.time,ratio_lc.counts,lw=1,color=colours[i],label=density*1.e7)
+		else:
+			f1ax2.plot(test_lc.time,test_lc.counts,lw=1,color=colours[i],label=density*1.e7)
+
+		# test_lc.write('test_lc_%s' % str(i+1),format='ascii')
+		# ratio_lc.write('ratio_lc_%s' % str(i+1),format='ascii')
+		np.savetxt('ratio_lc_%s' % str(i+1),ratio_lc.counts)
+
+		segsize=20000
+		if ratio:
+			cross_spec=stingray.crossspectrum.AveragedCrossspectrum(ratio_lc,reference_lc,segment_size=20000)
+		else:
+			cross_spec=stingray.crossspectrum.AveragedCrossspectrum(test_lc,reference_lc,segment_size=20000)
+		# cross_spec.rebin_log(f=0.1)
+		timelag=cross_spec.time_lag()
+		f2ax1.errorbar(cross_spec.freq,timelag[0],timelag[1],lw=1,color=colours[i],label=density*1.e7)
 
 
-		# print '\nCalculating lags...'
-		# lags=[x.time_lag() for x in cross_spectra]
-		# print 'Done.'
 
 
-		pl.show()
 		#### Plot reference lightcurve
 		# reference_lc.plot()
 		# pl.show()
@@ -111,7 +120,23 @@ def main():
 		#### Make image of spectra over time. TBC.
 		# pl.imshow(spectra.T,aspect=0.1)
 		# pl.show()
+		print '\nCalculating DCF using dcfirr.py'
+		print "This is really slow, this is Douglas' fault. We hate Douglas."
+		# if i==0:
+		if ratio:
+			lag,cor,numf,indices,indfinal=dcfirr(ratio_lc.time, ratio_lc.counts, reference_lc.time, reference_lc.counts, minpt=100000,minlag=-10000,maxlag=10000)
+		else:
+			lag,cor,numf,indices,indfinal=dcfirr(test_lc.time, test_lc.counts, reference_lc.time, reference_lc.counts, minpt=100000,minlag=-10000,maxlag=10000)
+		# else:
+			# lag,cor,numf,indices,indfinal=dcfirr(ratio_lc.time, ratio_lc.counts, reference_lc.time, reference_lc.counts, minpt=100000,minlag=-30000,maxlag=30000,indices=indices,indfinal=indfinal,numf=numf)
+		f3ax1.plot(lag,cor,lw=1,color=colours[i],label=density*1.e7)
 
+	pl.legend(loc='best', title=r'$\mathrm{Density}\ (\times10^7\ \mathrm{cm^{-3}})$', frameon=False)
+
+	# pl.show()
+	fig1.savefig('analysed_lightcurves.pdf',bbox_inches='tight')
+	fig2.savefig('analysed_lagfreq.pdf',bbox_inches='tight')
+	fig3.savefig('analysed_dcf.pdf',bbox_inches='tight')
 
 
 	pass

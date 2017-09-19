@@ -90,7 +90,7 @@ def main():
 							if conc>0:
 								tstep_commands.append('par 1 1 '+element.lower()+str(k+1)+' v '+str(np.log10(float(conc)*float(column))))
 				commands.append(tstep_commands)
-				filenames.append(run_settings.spectra_dir+'density_%s_spectrum_%s.qdp' % (str(density),str(i)))
+				filenames.append(run_settings.spectra_dir+'density_%s_spectrum_%s' % (str(density),str(i)))
 
 			else:
 				print '\tFile:',run_settings.spectra_dir+'density_%s_spectrum_%s.qdp' % (str(density),str(i)),'already exists, skipping...'
