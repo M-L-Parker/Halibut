@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env pythonw
 
 import numpy as np
 import pylab as pl
@@ -8,7 +8,6 @@ import roman
 from scipy.interpolate import UnivariateSpline as spline
 import sys
 import h5py
-
 
 def spex2cgs(density):
 	return density*1.e14

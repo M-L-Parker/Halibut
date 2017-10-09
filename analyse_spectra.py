@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 
 import numpy as np
-import pylab as pl
+import matplotlib.pyplot as pl
 from ufo_functions import *
 from glob import glob
 import stingray
 import h5py
 from dcfirr import dcfirr
 
-colours=['dodgerblue','forestgreen','goldenrod','orangered','red'][::-1]
+colours=['orchid','dodgerblue','forestgreen','goldenrod','orangered','red'][::-1]
 ratio=True
-calc_dcf=False ### Douglas wrote the DCF script and it's crazy slow and I hate him.
+calc_dcf=True ### Douglas wrote the DCF script and it's crazy slow and I hate him.
 
 
 def get_binned_lightcurve(energies, eband, spectra_dset,times):
@@ -81,10 +81,13 @@ def main():
 		f3ax1.set_ylabel('Correlation')
 	
 
+	cgs_densities=[]
+	lag_peaks=[]
 	for i,density in enumerate(densities):
 
 
 		print '\nLoading',spectra_dir+'spectral_data_density_%s.hdf5' % str(density)
+		cgs_densities.append(spex2cgs(density))
 		infile=h5py.File(spectra_dir+'spectral_data_density_%s.hdf5' % str(density),'r')
 		spectra_dset=infile['spectra']
 		energies_dset=infile['energies']
@@ -132,6 +135,8 @@ def main():
 				lag,cor,numf,indices,indfinal=dcfirr(test_lc.time, test_lc.counts, reference_lc.time, reference_lc.counts, minpt=100000,minlag=-10000,maxlag=10000)
 			f3ax1.plot(lag,cor,lw=1,color=colours[i],label=density*1.e7)
 
+			lag_peak=lag[cor==max(cor)]
+			lag_peaks.append(lag_peak)
 
 		#### Make covariance spectrum...
 		#make_covariance_spectrum(energies_dset[:],spectra_dset,energy_bins,times,reference_lc)
@@ -142,11 +147,24 @@ def main():
 		pl.legend(loc='best', title=r'$\mathrm{Density}\ (\times10^7\ \mathrm{cm^{-3}})$', frameon=False)
 
 	# pl.show()
+	print 'Saving lightcurves to analysed_lightcurves.pdf'
 	fig1.savefig('analysed_lightcurves.pdf',bbox_inches='tight')
+	print 'Saving lag-frequency to analysed_lagfreq.pdf'
 	fig2.savefig('analysed_lagfreq.pdf',bbox_inches='tight')
 	if calc_dcf:
 		fig3.savefig('analysed_dcf.pdf',bbox_inches='tight')
 
+		print 'Saving DCF peaks to lag_values.txt'
+		np.savetxt('lag_values.txt',lag_peaks)
+
+		# fig4=pl.figure()
+		# f4ax1=pl.subplot(111)
+		# f4ax1.set_xscale('log')
+		# f4ax1.set_yscale('log')
+		# f4ax1.set_xlabel(r'$\mathrm{Density}\ (\mathrm{cm^{-3}})$')
+		# f4ax1.set_ylabel('DCF peak (s)')
+		# pl.plot(cgs_densities,lag_peaks,marker='o',color='k',ls='none')
+		# pl.savefig('lag_density.pdf',bbox_inches='tight')
 
 	pass
 
