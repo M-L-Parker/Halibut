@@ -11,7 +11,7 @@ run_settings=settings('halibut_settings.txt')
 elements=run_settings.elements
 densities=run_settings.densities
 lc_filename=run_settings.lightcurve
-clobber=run_settings.clobber
+clobber=True#run_settings.clobber
 
 # elements=['Fe','Si','S','Ne', 'Mg', 'Ar','Ca']
 

@@ -11,7 +11,7 @@ import os
 
 # densities=np.logspace(-10,-5,6)
 run_settings=settings('halibut_settings.txt')
-elements=run_settings.elements
+# elements=run_settings.elements
 densities=run_settings.densities
 column=run_settings.column
 lc_name=run_settings.lightcurve
