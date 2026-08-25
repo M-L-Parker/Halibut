@@ -1,13 +1,21 @@
 #!/usr/bin/env pythonw
 
 import numpy as np
-import pylab as pl
+import matplotlib.pyplot as pl
 from glob import glob
 from astropy.io import fits
 import roman
 from scipy.interpolate import UnivariateSpline as spline
 import sys
 import h5py
+
+def get_binned_lightcurve(energies, eband, spectra_dset):
+    '''Returns the lightcurve for a given energy band. \
+    Eband should be an iterable object with a lower and upper limit limit'''
+    ### Find indices of matching energies. This is horribly inelegant.
+    lowindex=np.where(energies>eband[0])[0][0]
+    highindex=np.where(energies<eband[1])[-1][-1]
+    return np.mean(spectra_dset[:,lowindex:highindex+1],axis=1)
 
 def spex2cgs(density):
 	return density*1.e14
@@ -33,11 +41,13 @@ class pion_rates:
 	"""Big stupid class for holding data. To be tidied up nicely later, when I can be bothered."""
 
 	def __init__(self, source='pion_rates', density=1.e-10):
-		print '\nReading ionization/recombination rates from '+source
+		print('\nReading ionization/recombination rates from '+source)
 		file_names=glob(source+'/*%s*.asc' % str(density))
 		xis=[float('.'.join(x.split('.')[-3:-1]).split('_')[-1]) for x in file_names]
 
 		self.file_names = [y for x,y in sorted(zip(xis,file_names))]
+		# print self.file_names
+		# exit()
 		self.xis=sorted(xis)
 		self.data_stack=[]
 		for file_name in self.file_names:
@@ -64,7 +74,7 @@ class pion_rates:
 		return filtered_data
 
 	def get_ions(self,element):
-		print '\tCalculating ions of',element
+		print('\tCalculating ions of',element)
 		elements=self.data_stack[0,:,0]
 		filtered_data=self.data_stack[:,elements==element,:]
 		ions=sorted([roman.fromRoman(x) for x in list(set(filtered_data[0,:,1]))])
@@ -106,7 +116,7 @@ class pion_concentrations:
 	"""Big stupid class for holding data. To be tidied up nicely later, when I can be bothered."""
 
 	def __init__(self, source='pion_concs', density=1.e-10):
-		print '\nReading equilibrium concentrations from '+source
+		print('\nReading equilibrium concentrations from '+source)
 		file_names=glob(source+'/*%s*.asc' % str(density))
 		xis=[float('.'.join(x.split('.')[-3:-1]).split('_')[-1]) for x in file_names]
 		self.file_names = [y for x,y in sorted(zip(xis,file_names))]
@@ -114,7 +124,7 @@ class pion_concentrations:
 		self.data_stack=[]
 		for file_name in self.file_names:
 			###HAVE TO MANUALLY READ THESE FILES. ANNOYING.
-			###The array format is different for concentrations than rates - 
+			###The array format is different for concentrations than rates -
 			###only includes ions that are present, whereas rates includes all
 			i=0
 			temp_array=[]
@@ -142,7 +152,7 @@ class pion_concentrations:
 		self.elements=list(set(self.elements))
 
 	def filter_element(self,element):
-		print '\tFiltering concentrations table for',element
+		print('\tFiltering concentrations table for',element)
 		filtered_data=[]
 		for sub_array in self.data_stack:
 			filtered_sub_array=sub_array[sub_array[:,0]==element]
@@ -189,7 +199,7 @@ class pion_concentrations:
 class lightcurve:
 	"""Lightcurve class. Self explanatory. Assumes standard fits file format."""
 	def __init__(self, filename):
-		print '\nInitializing lightcurve:',filename
+		print('\nInitializing lightcurve:',filename)
 		self.filename=filename
 		rate_table=fits.open(filename)['RATE'].data
 		self.countrate=rate_table['RATE']
@@ -201,12 +211,12 @@ class lightcurve:
 	def rebin(self,factor):
 		"""Function to resample the lightcurve. Probably necessary."""
 		### This is very crude and could use re-writing.
-		print '\tRebinning lightcurve ('+self.filename+') by a factor of',factor
+		print('\tRebinning lightcurve ('+self.filename+') by a factor of',factor)
 		self.time=self.time[::factor]
 		n_timesteps=len(self.countrate)
 		remainder=n_timesteps%factor
 		new_countrate=[]
-		for i in range(0,n_timesteps/int(factor)):
+		for i in range(0,int(n_timesteps/int(factor))):
 			new_countrate.append(np.sum(self.countrate[factor*i:factor*i+factor])/float(factor))
 		if remainder !=0:
 			new_countrate.append(np.sum(self.countrate[factor*(i+1):factor*(i+1)])/float(remainder))
@@ -216,7 +226,7 @@ class lightcurve:
 
 	def filter_null(self):
 		"""Remove all zeros from lightcurve"""
-		print '\tRemoving zeros from lightcurve. Caution! Only run this AFTER rebinning, not before.'
+		print('\tRemoving zeros from lightcurve. Caution! Only run this AFTER rebinning, not before.')
 		self.time=self.time[self.countrate>0]
 		self.countrate=self.countrate[self.countrate>0]
 		self.filtered=True
@@ -225,13 +235,13 @@ class lightcurve:
 	def spline(self):
 		"""Fit a spline to lightcurve"""
 		if not self.filtered:
-			print 'WARNING: Lightcurve should be filtered for zeros (lighcurve.filter_null()) before fitting spline'
+			print('WARNING: Lightcurve should be filtered for zeros (lighcurve.filter_null()) before fitting spline')
 		lc_spline=spline(self.time,self.countrate,s=0)
 		return lc_spline
 
 	def cut_interval(self,tmin,tmax):
 		# find indices of intervals to keep
-		print '\tCutting times between',5.856e8+130000,'and',5.856e8+140000
+		print('\tCutting times between',5.856e8+130000,'and',5.856e8+140000)
 		indices=[]
 		for i,t in enumerate(self.time):
 			if t<tmin or t>tmax:
@@ -247,19 +257,19 @@ class settings:
 	"""Loads settings file"""
 	def __init__(self, filename):
 		self.read_file(filename)
-		
+
 		if 'lightcurve' in self.settings_dict:
 			self.lightcurve=self.settings_dict['lightcurve']
 		else:
-			print 'WARNING: lightcurve not found in settings'
-		
-		
+			print('WARNING: lightcurve not found in settings')
+
+
 		if 'elements' in self.settings_dict:
 			self.elements=self.settings_dict['elements'].split()
 		else:
-			print 'WARNING: elements not found in settings'
-		
-		
+			print('WARNING: elements not found in settings')
+
+
 		if 'cut_intervals' in self.settings_dict:
 			intervals=self.settings_dict['cut_intervals'].split()
 			self.cut_intervals=[(float(x),float(y)) for x, y in zip(intervals[::2],intervals[1::2])]
@@ -280,19 +290,19 @@ class settings:
 		if 'xi' in self.settings_dict:
 			self.xi = float(self.settings_dict['xi'])
 		else:
-			print 'WARNING: ionization not defined in settings file'
+			print('WARNING: ionization not defined in settings file')
 
 
 		if 'densities' in self.settings_dict:
 			self.densities=[float(x) for x in self.settings_dict['densities'].split()]
 		else:
-			print 'WARNING: densities not defined in settings file'
+			print('WARNING: densities not defined in settings file')
 
 
 		if 'column' in self.settings_dict:
 			self.column=self.settings_dict['column']
 		else:
-			print 'WARNING: column density not defined. This may eventually be relevant'
+			print('WARNING: column density not defined. This may eventually be relevant')
 
 		if 'spectra_dir' in self.settings_dict:
 			self.spectra_dir=self.settings_dict['spectra_dir']
@@ -307,10 +317,10 @@ class settings:
 			elif self.settings_dict['spectra_dir'] in ['True','true']:
 				self.clobber=True
 			else:
-				print 'WARNING: clobber can only be True or False. Assuming False.'
+				print('WARNING: clobber can only be True or False. Assuming False.')
 				self.clobber=False
 		else:
-			self.clobber=False	
+			self.clobber=False
 
 		if 'xi_range' in self.settings_dict:
 			vals=self.settings_dict['xi_range']
@@ -318,7 +328,7 @@ class settings:
 			# exit()
 			self.xi_range=np.linspace(float(vals.split()[0]),float(vals.split()[1]),float(vals.split()[2]))
 		else:
-			print 'WARNING: ionization range not defined in settings file'
+			print('WARNING: ionization range not defined in settings file')
 
 
 	def read_file(self,filename):
@@ -331,12 +341,12 @@ class settings:
 			vals.append(' '.join(temp[1:]))
 		self.settings_dict=dict([(x,y) for x,y in zip(keys, vals)])
 
-		
+
 
 
 
 if __name__ == '__main__':
-	print 'Generating test plots for equilibrium concentrations/rates and lightcurve.'
+	print('Generating test plots for equilibrium concentrations/rates and lightcurve.')
 
 	rates=pion_rates()
 	concentrations=pion_concentrations()
@@ -400,7 +410,6 @@ if __name__ == '__main__':
 	spline_test=test_lightcurve.spline()
 	dummy_times=np.linspace(min(test_lightcurve.time),max(test_lightcurve.time),100000)
 	pl.plot(dummy_times,spline_test(dummy_times),color='dodgerblue',label='Spline')
-	
+
 	pl.legend()
 	pl.savefig('lightcurve_test.pdf',bbox_inches='tight')
-	
