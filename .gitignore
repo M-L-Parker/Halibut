@@ -1,0 +1,8 @@
+*.pdf
+*.txt
+*.dat
+pion_concs
+pion_rates
+time_dependent_ions
+.ipynb_checkpoints
+ratio_lc_*
